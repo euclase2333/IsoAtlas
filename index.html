@@ -1,0 +1,566 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>IsoAtlas · 等高线生成器（最小版）</title>
+<style>
+  /* ========== 整体布局 ========== */
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: "Microsoft YaHei", "PingFang SC", sans-serif;
+    background: #f4f4f6;
+    color: #222;
+  }
+  .app {
+    display: flex;
+    flex-wrap: wrap;
+    min-height: 100vh;
+  }
+  .panel {
+    width: 320px;
+    padding: 24px;
+    background: #ffffff;
+    border-right: 1px solid #e2e2e6;
+  }
+  .panel h1 {
+    font-size: 20px;
+    margin-bottom: 4px;
+  }
+  .panel .hint {
+    font-size: 13px;
+    color: #777;
+    margin-bottom: 20px;
+    line-height: 1.5;
+  }
+  .field {
+    margin-bottom: 18px;
+  }
+  .field label {
+    display: block;
+    font-size: 14px;
+    margin-bottom: 6px;
+    font-weight: 600;
+  }
+  .field .sub {
+    font-weight: 400;
+    color: #999;
+    font-size: 12px;
+  }
+  .field .row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .field input[type="range"] {
+    flex: 1;
+  }
+  .field .val {
+    width: 46px;
+    text-align: right;
+    font-size: 13px;
+    color: #555;
+  }
+  #exportBtn {
+    width: 100%;
+    padding: 12px;
+    background: #2563eb;
+    color: white;
+    border: none;
+    border-radius: 8px;
+    font-size: 15px;
+    cursor: pointer;
+    margin-top: 10px;
+  }
+  #exportBtn:hover {
+    background: #1d4ed8;
+  }
+  .preview {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+    position: relative;
+  }
+  canvas {
+    background: #050505;
+    border: 1px solid #222;
+    box-shadow: 0 2px 16px rgba(0,0,0,0.25);
+    max-width: 100%;
+    height: auto;
+    cursor: crosshair;
+  }
+  /* 鼠标悬浮时显示海拔的小提示框 */
+  #tooltip {
+    position: absolute;
+    pointer-events: none;
+    background: rgba(0,0,0,0.75);
+    color: #fff;
+    font-size: 12px;
+    padding: 4px 8px;
+    border-radius: 4px;
+    display: none;
+    white-space: nowrap;
+  }
+</style>
+</head>
+<body>
+
+<div class="app">
+
+  <!-- ========== 左侧：参数面板 ========== -->
+  <div class="panel">
+    <h1>IsoAtlas</h1>
+    <p class="hint">
+      最小可运行版本 v2：一座山，但用了「噪声扭曲地形 + 等高线追踪算法」，
+      所以等高线不再是完美的圆，而是像真实地形图一样自然弯曲。
+      拖动滑块实时看效果，点击画布可以移动山峰。
+    </p>
+
+    <div class="field">
+      <label>山峰高度 <span class="sub">peak</span></label>
+      <div class="row">
+        <input id="peak" type="range" min="50" max="500" value="200" />
+        <span class="val" id="peakVal">200</span>
+      </div>
+    </div>
+
+    <div class="field">
+      <label>山的宽度 <span class="sub">spread</span></label>
+      <div class="row">
+        <input id="spread" type="range" min="60" max="400" value="180" />
+        <span class="val" id="spreadVal">180</span>
+      </div>
+    </div>
+
+    <div class="field">
+      <label>等高线层数 <span class="sub">levels</span></label>
+      <div class="row">
+        <input id="levels" type="range" min="4" max="40" value="20" />
+        <span class="val" id="levelsVal">20</span>
+      </div>
+    </div>
+
+    <div class="field">
+      <label>线条粗细 <span class="sub">line width</span></label>
+      <div class="row">
+        <input id="lineWidth" type="range" min="0.5" max="3" step="0.1" value="1" />
+        <span class="val" id="lineWidthVal">1</span>
+      </div>
+    </div>
+
+    <div class="field">
+      <label>计曲线间隔 <span class="sub">每隔几条加粗一条</span></label>
+      <div class="row">
+        <input id="indexInterval" type="range" min="2" max="10" value="5" />
+        <span class="val" id="indexIntervalVal">5</span>
+      </div>
+    </div>
+
+    <div class="field">
+      <label>地形自然扭曲 <span class="sub">noise amount</span></label>
+      <div class="row">
+        <input id="noiseAmp" type="range" min="0" max="80" value="28" />
+        <span class="val" id="noiseAmpVal">28</span>
+      </div>
+    </div>
+
+    <div class="field">
+      <label>噪声细节 <span class="sub">noise detail</span></label>
+      <div class="row">
+        <input id="noiseScale" type="range" min="5" max="50" value="12" />
+        <span class="val" id="noiseScaleVal">12</span>
+      </div>
+    </div>
+
+    <p class="hint">
+      点击画布可以把山峰移动到你点的位置；鼠标悬浮时会显示当前海拔。
+      红点标记的是当前地形的最高点（山顶）。
+    </p>
+
+    <button id="exportBtn">导出为 PNG 图片</button>
+  </div>
+
+  <!-- ========== 右侧：画布，用来实时画图 ========== -->
+  <div class="preview">
+    <canvas id="canvas" width="800" height="800"></canvas>
+    <div id="tooltip"></div>
+  </div>
+
+</div>
+
+<script>
+/*
+  ========================================================
+  这一版相比上一版做了什么？
+  ------------------------------------------------------
+  上一版：只有一个山峰，用的是"标准高斯函数"，
+  数学上完全对称，所以每一圈等高线正好是一个"正圆"，
+  我们直接用 ctx.arc() 画圆就行了。
+
+  但真实地形从来不是正圆的，看起来会很假。
+  所以这一版加入了两个关键技术：
+
+  1.【噪声扭曲】Domain Warping（域扭曲）
+     在计算"这个点距离山顶多远"之前，先用一个噪声函数
+     把这个点的坐标"轻微挪动"一下（挪动幅度由 noiseAmp 控制，
+     挪动的疏密由 noiseScale 控制）。
+     这样算出来的地形不再是完美对称的，
+     等高线自然就会变成弯弯曲曲、疙疙瘩瘩的自然形状，
+     跟专业地形图的感觉很像。
+
+     这里用的噪声叫"值噪声"（Value Noise），
+     效果和 Perlin / Simplex 噪声类似，但实现起来简单很多，
+     很适合新手阅读和理解。以后想换成更专业的 Simplex 噪声，
+     只需要替换 noise2D() 这一个函数即可，其他代码不用改。
+
+  2.【等高线追踪算法】Marching Squares（移动正方形法）
+     因为地形不再对称，就不能再用画圆的方式了。
+     做法是：
+       a. 把整张画布切成一个很密的网格（比如 140 x 140 格）
+       b. 算出网格每个交叉点的"海拔"
+       c. 对于每一层要画的海拔阈值，检查每个小格子的 4 个角
+          "海拔是否超过阈值"，一共有 16 种组合方式
+       d. 根据组合方式，在格子的边上用线性插值找到
+          "海拔正好等于阈值"的位置，连成一小段线
+       e. 把所有小格子算出来的线段拼在一起，就是一条完整的等高线
+
+     这是等高线图、地形图软件里最常用的经典算法，
+     以后要支持"多个山峰融合"，靠的也是这同一套算法
+     （只需要把 heightAt() 改成"多个山峰高度求和"即可）。
+  ========================================================
+*/
+
+const canvas = document.getElementById('canvas');
+const ctx = canvas.getContext('2d');
+const tooltip = document.getElementById('tooltip');
+
+// 山峰中心点，默认在画布正中间，可以点击移动
+let center = { x: canvas.width / 2, y: canvas.height / 2 };
+
+// ---------- 拿到所有滑块 ----------
+const peakInput = document.getElementById('peak');
+const spreadInput = document.getElementById('spread');
+const levelsInput = document.getElementById('levels');
+const lineWidthInput = document.getElementById('lineWidth');
+const indexIntervalInput = document.getElementById('indexInterval');
+const noiseAmpInput = document.getElementById('noiseAmp');
+const noiseScaleInput = document.getElementById('noiseScale');
+
+const allInputs = [
+  peakInput, spreadInput, levelsInput, lineWidthInput,
+  indexIntervalInput, noiseAmpInput, noiseScaleInput
+];
+
+// ================================================================
+// 第一部分：噪声函数（值噪声，效果类似 Perlin Noise）
+// ================================================================
+
+// 一个确定性的"伪随机数"函数：同样的 x,y 永远返回同样的数字
+// （这一点很重要，不然每次重画地形都会闪烁跳动）
+function hash(x, y) {
+  const s = Math.sin(x * 127.1 + y * 311.7) * 43758.5453123;
+  return s - Math.floor(s); // 结果落在 0~1 之间
+}
+
+// 平滑插值曲线（让噪声看起来自然，而不是生硬的格子状）
+function fade(t) {
+  return t * t * t * (t * (t * 6 - 15) + 10);
+}
+
+// 2D 值噪声：输入任意坐标，输出一个 0~1 之间、连续变化的数字
+function noise2D(x, y) {
+  const xi = Math.floor(x), yi = Math.floor(y);
+  const xf = x - xi, yf = y - yi;
+  const u = fade(xf), v = fade(yf);
+
+  const n00 = hash(xi, yi);
+  const n10 = hash(xi + 1, yi);
+  const n01 = hash(xi, yi + 1);
+  const n11 = hash(xi + 1, yi + 1);
+
+  const nx0 = n00 + u * (n10 - n00);
+  const nx1 = n01 + u * (n11 - n01);
+  return nx0 + v * (nx1 - nx0);
+}
+
+// ================================================================
+// 第二部分：地形高度函数
+// ================================================================
+
+// 计算某个坐标点的海拔高度
+// 核心思路：先用噪声把坐标"扭一下"，再套用高斯函数算高度
+function heightAt(x, y, peak, spread, noiseAmp, noiseScale) {
+  // 两个方向分别用不同的噪声采样点（+50 偏移是为了让 x/y 方向的扭曲不同步）
+  const warpX = (noise2D(x * noiseScale, y * noiseScale) - 0.5) * noiseAmp;
+  const warpY = (noise2D(x * noiseScale + 50, y * noiseScale + 50) - 0.5) * noiseAmp;
+
+  const dx = (x + warpX) - center.x;
+  const dy = (y + warpY) - center.y;
+  const dist = Math.sqrt(dx * dx + dy * dy);
+
+  return peak * Math.exp(-(dist * dist) / (2 * spread * spread));
+}
+
+// ================================================================
+// 第三部分：等高线追踪（Marching Squares）
+// ================================================================
+
+const GRID = 140; // 网格密度：越大越精细，但计算量也越大
+
+// 在给定参数下，算出整张网格每个交叉点的海拔，存成二维数组
+function buildHeightGrid(peak, spread, noiseAmp, noiseScale) {
+  const cellSize = canvas.width / GRID;
+  const grid = [];
+  let maxH = -Infinity, maxPt = { x: center.x, y: center.y };
+
+  for (let j = 0; j <= GRID; j++) {
+    const row = [];
+    for (let i = 0; i <= GRID; i++) {
+      const x = i * cellSize;
+      const y = j * cellSize;
+      const h = heightAt(x, y, peak, spread, noiseAmp, noiseScale);
+      row.push(h);
+      if (h > maxH) { maxH = h; maxPt = { x, y }; }
+    }
+    grid.push(row);
+  }
+  return { grid, cellSize, maxH, maxPt };
+}
+
+// 线性插值：在数值 va、vb 之间找到"正好等于 threshold"的位置比例
+function lerpPoint(p0, p1, v0, v1, threshold) {
+  if (v1 === v0) return p0;
+  const t = (threshold - v0) / (v1 - v0);
+  return [p0[0] + (p1[0] - p0[0]) * t, p0[1] + (p1[1] - p0[1]) * t];
+}
+
+// 对某一个阈值海拔，扫描整张网格，返回所有线段 [[x1,y1],[x2,y2]]
+function traceContour(grid, cellSize, threshold) {
+  const segments = [];
+
+  for (let j = 0; j < GRID; j++) {
+    for (let i = 0; i < GRID; i++) {
+      // 格子的 4 个角：a=左上 b=右上 c=右下 d=左下
+      const a = grid[j][i];
+      const b = grid[j][i + 1];
+      const c = grid[j + 1][i + 1];
+      const d = grid[j + 1][i];
+
+      // 判断每个角是否"高于阈值"，拼成一个 4 位二进制数
+      let caseIdx = 0;
+      if (a > threshold) caseIdx |= 8;
+      if (b > threshold) caseIdx |= 4;
+      if (c > threshold) caseIdx |= 2;
+      if (d > threshold) caseIdx |= 1;
+
+      // 0 = 整个格子都在阈值以下，15 = 整个格子都在阈值以上
+      // 这两种情况格子内部没有等高线穿过，直接跳过
+      if (caseIdx === 0 || caseIdx === 15) continue;
+
+      const x0 = i * cellSize, x1 = (i + 1) * cellSize;
+      const y0 = j * cellSize, y1 = (j + 1) * cellSize;
+
+      // 格子 4 条边上，海拔正好等于阈值的点（用线性插值找到）
+      const top    = lerpPoint([x0, y0], [x1, y0], a, b, threshold);
+      const right  = lerpPoint([x1, y0], [x1, y1], b, c, threshold);
+      const bottom = lerpPoint([x0, y1], [x1, y1], d, c, threshold);
+      const left   = lerpPoint([x0, y0], [x0, y1], a, d, threshold);
+
+      // 16 种组合对应的连线方式（经典 Marching Squares 查找表）
+      // 5 和 10 是"鞍点"情况，格子里同时有两条不相连的线段
+      switch (caseIdx) {
+        case 1:  segments.push([left, bottom]); break;
+        case 2:  segments.push([bottom, right]); break;
+        case 3:  segments.push([left, right]); break;
+        case 4:  segments.push([top, right]); break;
+        case 5:  segments.push([top, left], [bottom, right]); break;
+        case 6:  segments.push([top, bottom]); break;
+        case 7:  segments.push([top, left]); break;
+        case 8:  segments.push([top, left]); break;
+        case 9:  segments.push([top, bottom]); break;
+        case 10: segments.push([top, right], [bottom, left]); break;
+        case 11: segments.push([top, right]); break;
+        case 12: segments.push([left, right]); break;
+        case 13: segments.push([bottom, right]); break;
+        case 14: segments.push([left, bottom]); break;
+      }
+    }
+  }
+  return segments;
+}
+
+// ================================================================
+// 第四部分：渲染
+// ================================================================
+
+function render() {
+  const peak = Number(peakInput.value);
+  const spread = Number(spreadInput.value);
+  const levels = Number(levelsInput.value);
+  const lineWidth = Number(lineWidthInput.value);
+  const indexInterval = Number(indexIntervalInput.value);
+  const noiseAmp = Number(noiseAmpInput.value);
+  const noiseScale = Number(noiseScaleInput.value) / 1000; // 滑块给的是整数，换算成小数
+
+  peakVal.textContent = peak;
+  spreadVal.textContent = spread;
+  levelsVal.textContent = levels;
+  lineWidthVal.textContent = lineWidth;
+  indexIntervalVal.textContent = indexInterval;
+  noiseAmpVal.textContent = noiseAmp;
+  noiseScaleVal.textContent = Number(noiseScaleInput.value);
+
+  // 深色背景
+  ctx.fillStyle = '#050505';
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+  // 算出整张网格的海拔（同时顺便找到山顶精确位置，供后面画红点用）
+  const { grid, cellSize, maxPt } = buildHeightGrid(peak, spread, noiseAmp, noiseScale);
+
+  ctx.lineJoin = 'round';
+  ctx.lineCap = 'round';
+
+  // 从低到高，逐层画等高线
+  for (let i = 1; i <= levels; i++) {
+    const threshold = (peak * i) / (levels + 1);
+    if (threshold <= 0 || threshold >= peak) continue;
+
+    const segments = traceContour(grid, cellSize, threshold);
+    if (segments.length === 0) continue;
+
+    const isIndex = i % indexInterval === 0; // 计曲线：每隔几条加粗一条
+
+    // ---- 画线 ----
+    ctx.beginPath();
+    for (const [p0, p1] of segments) {
+      ctx.moveTo(p0[0], p0[1]);
+      ctx.lineTo(p1[0], p1[1]);
+    }
+    if (isIndex) {
+      ctx.strokeStyle = 'rgba(255,255,255,0.95)';
+      ctx.lineWidth = lineWidth * 2.4;
+    } else {
+      ctx.strokeStyle = 'rgba(255,255,255,0.32)';
+      ctx.lineWidth = lineWidth;
+    }
+    ctx.stroke();
+
+    // ---- 标注 1~2 个海拔数字 ----
+    // 从这一层的线段里，挑两段离得比较远的，把文字放在线段中点，
+    // 并让文字方向跟这段线本身的方向一致（贴着线走）
+    const pickIdx = [0, Math.floor(segments.length * 0.55)];
+    const used = new Set();
+
+    pickIdx.forEach((idx) => {
+      if (used.has(idx) || idx >= segments.length) return;
+      used.add(idx);
+      const [p0, p1] = segments[idx];
+      const mx = (p0[0] + p1[0]) / 2;
+      const my = (p0[1] + p1[1]) / 2;
+      let angle = Math.atan2(p1[1] - p0[1], p1[0] - p0[0]);
+      // 避免文字上下颠倒：角度超过 90 度就翻转 180 度
+      if (angle > Math.PI / 2 || angle < -Math.PI / 2) angle += Math.PI;
+
+      ctx.save();
+      ctx.translate(mx, my);
+      ctx.rotate(angle);
+      ctx.font = isIndex ? 'bold 12px monospace' : '10px monospace';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      // 先描一层深色边，让文字在线条上也看得清楚
+      ctx.strokeStyle = 'rgba(5,5,5,0.9)';
+      ctx.lineWidth = 3;
+      ctx.strokeText(`${Math.round(threshold)}m`, 0, 0);
+      ctx.fillStyle = isIndex ? '#ffffff' : 'rgba(255,255,255,0.85)';
+      ctx.fillText(`${Math.round(threshold)}m`, 0, 0);
+      ctx.restore();
+    });
+  }
+
+  // ---- 山顶标记：红点 + 海拔文字 ----
+  ctx.beginPath();
+  ctx.arc(maxPt.x, maxPt.y, 5, 0, Math.PI * 2);
+  ctx.fillStyle = '#ef4444';
+  ctx.fill();
+  ctx.strokeStyle = '#ffffff';
+  ctx.lineWidth = 1.5;
+  ctx.stroke();
+
+  ctx.font = 'bold 13px monospace';
+  ctx.textAlign = 'left';
+  ctx.textBaseline = 'middle';
+  const label = `Elev: ${Math.round(peak)}m`;
+  const tx = maxPt.x + 10, ty = maxPt.y;
+  const tw = ctx.measureText(label).width;
+  ctx.fillStyle = 'rgba(0,0,0,0.7)';
+  ctx.fillRect(tx - 4, ty - 10, tw + 8, 20);
+  ctx.fillStyle = '#ffffff';
+  ctx.fillText(label, tx, ty);
+}
+
+// ---------- 用 requestAnimationFrame 做一个简单的"防抖"，
+//            避免拖动滑块时因为渲染太频繁而卡顿 ----------
+let renderScheduled = false;
+function scheduleRender() {
+  if (renderScheduled) return;
+  renderScheduled = true;
+  requestAnimationFrame(() => {
+    renderScheduled = false;
+    render();
+  });
+}
+
+// 点击画布：移动山峰中心
+canvas.addEventListener('click', (e) => {
+  const rect = canvas.getBoundingClientRect();
+  const scaleX = canvas.width / rect.width;
+  const scaleY = canvas.height / rect.height;
+  center.x = (e.clientX - rect.left) * scaleX;
+  center.y = (e.clientY - rect.top) * scaleY;
+  scheduleRender();
+});
+
+// 鼠标移动：显示当前位置的海拔（悬浮提示框）
+canvas.addEventListener('mousemove', (e) => {
+  const rect = canvas.getBoundingClientRect();
+  const scaleX = canvas.width / rect.width;
+  const scaleY = canvas.height / rect.height;
+  const x = (e.clientX - rect.left) * scaleX;
+  const y = (e.clientY - rect.top) * scaleY;
+
+  const peak = Number(peakInput.value);
+  const spread = Number(spreadInput.value);
+  const noiseAmp = Number(noiseAmpInput.value);
+  const noiseScale = Number(noiseScaleInput.value) / 1000;
+  const h = heightAt(x, y, peak, spread, noiseAmp, noiseScale);
+
+  tooltip.style.display = 'block';
+  tooltip.style.left = (e.clientX - rect.left + 14) + 'px';
+  tooltip.style.top = (e.clientY - rect.top + 10) + 'px';
+  tooltip.textContent = `海拔 Elev: ${Math.round(h)}m`;
+});
+
+canvas.addEventListener('mouseleave', () => {
+  tooltip.style.display = 'none';
+});
+
+// 所有滑块拖动时，实时重新渲染
+allInputs.forEach((el) => el.addEventListener('input', scheduleRender));
+
+// 导出 PNG
+document.getElementById('exportBtn').addEventListener('click', () => {
+  const link = document.createElement('a');
+  link.download = '等高线图.png';
+  link.href = canvas.toDataURL('image/png');
+  link.click();
+});
+
+// 初始渲染
+render();
+</script>
+
+</body>
+</html>
