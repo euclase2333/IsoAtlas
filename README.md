@@ -2,7 +2,7 @@
 
 在浏览器里生成专业地形图风格的等高线地图，支持多山峰、盆地、自然噪声与 PNG / JPG / SVG 导出。
 
-在线使用：`https://euclase2333.github.io/IsoAtlas/`
+在线使用：https://euclase2333.github.io/IsoAtlas/
 
 ---
 
