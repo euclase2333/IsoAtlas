@@ -119,6 +119,7 @@
           <label>中心点列表 <span class="sub">拖动画布上的圆点可移动位置</span></label>
           <div id="peakList"></div>
           <button id="addPeakBtn">＋ 添加中心点</button>
+          <label class="checkline" style="margin-top:8px;"><input id="showIndexBadges" type="checkbox" checked />画布上显示中心点编号（1、2、3…，仅编辑时可见，导出图片里永远不会出现）</label>
         </div>
       </div>
     </div>
@@ -138,6 +139,10 @@
         <div class="field">
           <label>计曲线间隔 <span class="sub">每隔几条加粗一条</span></label>
           <div class="row"><input id="indexInterval" type="range" min="2" max="10" value="5" /><span class="val" id="indexIntervalVal">5</span></div>
+        </div>
+        <div class="field">
+          <label>起始半径 <span class="sub">离每个中心点多远才开始出现等高线，0=不留白</span></label>
+          <div class="row"><input id="startRadius" type="range" min="0" max="250" value="0" /><span class="val" id="startRadiusVal">0</span></div>
         </div>
       </div>
     </div>
@@ -169,13 +174,19 @@
       </div>
     </div>
 
-    <!-- ---------------- 山顶标记 ---------------- -->
+    <!-- ---------------- 中心点标记 ---------------- -->
     <div class="section">
-      <div class="section-title" data-target="body-peak">山顶标记<span class="chevron">▾</span></div>
+      <div class="section-title" data-target="body-peak">中心点标记（山顶 / 盆底）<span class="chevron">▾</span></div>
       <div class="section-body" id="body-peak">
-        <label class="checkline" style="margin-bottom:10px;"><input id="peakShow" type="checkbox" checked />显示最高点红点 + 海拔标注</label>
-        <div class="colorpair"><input id="peakDotColor" type="color" value="#ef4444" /><span>圆点颜色</span></div>
-        <div class="colorpair"><input id="peakLabelColor" type="color" value="#000000" /><span>文字颜色</span></div>
+        <p class="hint" style="margin-bottom:10px;">
+          每一个中心点都会显示一个小圆点 + 海拔文字（山顶用一种颜色，盆地用另一种颜色），
+          文字带一个不透明底色块，方便在复杂线条上看清楚。这里统一控制显示/隐藏，隐藏后导出图片里也不会有。
+        </p>
+        <label class="checkline" style="margin-bottom:10px;"><input id="peakShow" type="checkbox" checked />显示中心点圆点 + 海拔标注（山顶、盆底一起）</label>
+        <div class="colorpair"><input id="peakDotColor" type="color" value="#ef4444" /><span>山顶圆点颜色</span></div>
+        <div class="colorpair"><input id="basinDotColor" type="color" value="#7c3aed" /><span>盆底圆点颜色</span></div>
+        <div class="colorpair"><input id="peakLabelBg" type="color" value="#000000" /><span>文字底色块（不透明）</span></div>
+        <div class="colorpair"><input id="peakLabelColor" type="color" value="#ffffff" /><span>文字颜色</span></div>
         <div class="field">
           <label>文字字号 <span class="sub">字体跟随上方"标注"里选的字体</span></label>
           <div class="row"><input id="peakFontSize" type="range" min="8" max="60" value="13" /><span class="val" id="peakFontSizeVal">13</span></div>
@@ -268,10 +279,10 @@ function fontStack(family) {
 }
 
 const els = {};
-['spread','noiseAmp','noiseScale','levels','lineWidth','indexInterval',
+['spread','noiseAmp','noiseScale','levels','lineWidth','indexInterval','startRadius',
  'fontSize','labelColor','followLineColor','labelStroke',
- 'peakShow','peakDotColor','peakLabelColor','peakFontSize',
- 'bgColor','contourColor','unifyIndexColor','indexColor',
+ 'peakShow','peakDotColor','basinDotColor','peakLabelColor','peakLabelBg','peakFontSize',
+ 'bgColor','contourColor','unifyIndexColor','indexColor','showIndexBadges',
  'outputWidth','outputHeight','lockAspect','dpiInput'].forEach(id => els[id] = document.getElementById(id));
 
 const fontFamilySelect = document.getElementById('fontFamily');
@@ -389,6 +400,23 @@ function traceContour(grid, cols, rows, cellSize, threshold) {
     }
   }
   return segments;
+}
+
+// 把落在"任意一个中心点周围 startRadius 范围内"的线段丢掉，
+// 这样每个山顶/盆地中心附近就会留出一圈空白，不画等高线
+// （startRadius = 0 时什么都不过滤，行为和以前完全一样）
+function filterSegmentsByStartRadius(segments, peaksLogical, startRadius) {
+  if (!startRadius || startRadius <= 0 || !peaksLogical.length) return segments;
+  return segments.filter((seg) => {
+    const mx = (seg[0][0] + seg[1][0]) / 2;
+    const my = (seg[0][1] + seg[1][1]) / 2;
+    for (let i = 0; i < peaksLogical.length; i++) {
+      const pk = peaksLogical[i];
+      const d = Math.hypot(mx - pk.x, my - pk.y);
+      if (d < startRadius) return false;
+    }
+    return true;
+  });
 }
 
 // ================================================================
@@ -523,13 +551,15 @@ function hexToRgba(hex, alpha) {
   const b = parseInt(h.substring(4, 6), 16);
   return `rgba(${r},${g},${b},${alpha})`;
 }
+// markerBg / markerText：中心点标记（山顶/盆底海拔文字）的底色块和文字颜色。
+// 每个模板都配了一组对比度足够的组合，不会再出现"黑字配黑底"看不清的问题。
 const PRESETS = {
-  defaultWhite: { bg: '#ffffff', contour: '#000000', index: '#000000', label: '#000000' },
-  defaultBlack: { bg: '#0a0a0a', contour: '#ffffff', index: '#ffffff', label: '#ffffff' },
-  terrain:      { bg: '#2f6b3f', contour: '#f6c945', index: '#fff2b0', label: '#fff2b0' },
-  kraft:        { bg: '#d8c39c', contour: '#5b4324', index: '#3a2a14', label: '#3a2a14' },
-  sky:          { bg: '#ffffff', contour: '#1d6fe0', index: '#0b3f8a', label: '#0b3f8a' },
-  ocean:        { bg: '#08355c', contour: '#ffffff', index: '#ffffff', label: '#ffffff' },
+  defaultWhite: { bg: '#ffffff', contour: '#000000', index: '#000000', label: '#000000', markerBg: '#111111', markerText: '#ffffff' },
+  defaultBlack: { bg: '#0a0a0a', contour: '#ffffff', index: '#ffffff', label: '#ffffff', markerBg: '#f5f5f5', markerText: '#111111' },
+  terrain:      { bg: '#2f6b3f', contour: '#f6c945', index: '#fff2b0', label: '#fff2b0', markerBg: '#1c2b1c', markerText: '#ffe9a8' },
+  kraft:        { bg: '#d8c39c', contour: '#5b4324', index: '#3a2a14', label: '#3a2a14', markerBg: '#3a2a14', markerText: '#f3e6c8' },
+  sky:          { bg: '#ffffff', contour: '#1d6fe0', index: '#0b3f8a', label: '#0b3f8a', markerBg: '#0b3f8a', markerText: '#ffffff' },
+  ocean:        { bg: '#08355c', contour: '#ffffff', index: '#ffffff', label: '#ffffff', markerBg: '#ffffff', markerText: '#08355c' },
 };
 document.querySelectorAll('.presets button').forEach((btn) => {
   btn.addEventListener('click', () => {
@@ -538,6 +568,8 @@ document.querySelectorAll('.presets button').forEach((btn) => {
     els.contourColor.value = p.contour;
     els.indexColor.value = p.index;
     els.labelColor.value = p.label;
+    els.peakLabelBg.value = p.markerBg;
+    els.peakLabelColor.value = p.markerText;
     scheduleRender();
   });
 });
@@ -834,12 +866,14 @@ function collectParams() {
     spread: Number(els.spread.value),
     noiseAmp: Number(els.noiseAmp.value), noiseScale: Number(els.noiseScale.value) / 1000,
     levels: Number(els.levels.value), lineWidth: Number(els.lineWidth.value),
-    indexInterval: Number(els.indexInterval.value),
+    indexInterval: Number(els.indexInterval.value), startRadius: Number(els.startRadius.value),
     fontSize: Number(els.fontSize.value), fontFamily: currentFontFamily,
     labelColor: els.labelColor.value, followLineColor: els.followLineColor.checked,
     labelStroke: els.labelStroke.checked,
     peakShow: els.peakShow.checked, peakDotColor: els.peakDotColor.value,
-    peakLabelColor: els.peakLabelColor.value, peakFontSize: Number(els.peakFontSize.value),
+    basinDotColor: els.basinDotColor.value,
+    peakLabelColor: els.peakLabelColor.value, peakLabelBg: els.peakLabelBg.value,
+    peakFontSize: Number(els.peakFontSize.value),
     bgColor: els.bgColor.value, contourColor: els.contourColor.value,
     unifyIndexColor: els.unifyIndexColor.checked, indexColor: els.indexColor.value,
   };
@@ -873,7 +907,8 @@ function drawScene(targetCtx, pxWidth, pxHeight, p) {
     for (let i = 1; i <= p.levels; i++) {
       const threshold = minH + (range * i) / (p.levels + 1);
       const isIndex = i % p.indexInterval === 0;
-      const segments = traceContour(grid, cols, rows, cellSize, threshold);
+      let segments = traceContour(grid, cols, rows, cellSize, threshold);
+      segments = filterSegmentsByStartRadius(segments, peaksLogical, p.startRadius);
       if (!segments.length) continue;
       const paths = chainSegments(segments);
 
@@ -916,25 +951,36 @@ function drawScene(targetCtx, pxWidth, pxHeight, p) {
     targetCtx.restore();
   });
 
-  if (p.peakShow && isFinite(maxH)) {
-    targetCtx.beginPath();
-    targetCtx.arc(maxPt[0], maxPt[1], 5, 0, Math.PI * 2);
-    targetCtx.fillStyle = p.peakDotColor;
-    targetCtx.fill();
-    targetCtx.strokeStyle = '#ffffff';
-    targetCtx.lineWidth = 1.5;
-    targetCtx.stroke();
-
+  // 每个中心点（不管是山还是盆地）都单独画一个"圆点 + 海拔文字"标记，
+  // 而不是只标全图唯一的最高点。山用 peakDotColor，盆地用 basinDotColor，
+  // 文字底色块现在是完全不透明的（不再是半透明黑，避免配色不对时糊成一片看不清）。
+  if (p.peakShow) {
     targetCtx.font = `bold ${p.peakFontSize}px ` + fontStack(p.fontFamily);
     targetCtx.textAlign = 'left';
     targetCtx.textBaseline = 'middle';
-    const label = `Elev: ${Math.round(maxH)}m`;
-    const tx = maxPt[0] + 10, ty = maxPt[1];
-    const tw = targetCtx.measureText(label).width;
-    targetCtx.fillStyle = 'rgba(0,0,0,0.7)';
-    targetCtx.fillRect(tx - 4, ty - p.peakFontSize * 0.75, tw + 8, p.peakFontSize * 1.5);
-    targetCtx.fillStyle = p.peakLabelColor;
-    targetCtx.fillText(label, tx, ty);
+    peaksLogical.forEach((pk) => {
+      const isBasin = pk.height < 0;
+      // 用该点自己的坐标，重新算一次这个位置真实的海拔
+      // （地形是所有中心点叠加+噪声的结果，直接用这个点自身坐标算，
+      //   比用存进去的 height 数值更准确，能反映山体融合后的真实高度）
+      const elev = heightAtLogical(pk.x, pk.y, peaksLogical, p.spread, p.noiseAmp, p.noiseScale);
+
+      targetCtx.beginPath();
+      targetCtx.arc(pk.x, pk.y, 5, 0, Math.PI * 2);
+      targetCtx.fillStyle = isBasin ? p.basinDotColor : p.peakDotColor;
+      targetCtx.fill();
+      targetCtx.strokeStyle = '#ffffff';
+      targetCtx.lineWidth = 1.5;
+      targetCtx.stroke();
+
+      const label = `Elev: ${Math.round(elev)}m`;
+      const tx = pk.x + 10, ty = pk.y;
+      const tw = targetCtx.measureText(label).width;
+      targetCtx.fillStyle = p.peakLabelBg; // 不透明底色块
+      targetCtx.fillRect(tx - 4, ty - p.peakFontSize * 0.75, tw + 8, p.peakFontSize * 1.5);
+      targetCtx.fillStyle = p.peakLabelColor;
+      targetCtx.fillText(label, tx, ty);
+    });
   }
 
   targetCtx.restore();
@@ -977,7 +1023,7 @@ function scheduleRender() {
     renderScheduled = false;
     const p = collectParams();
     drawScene(ctx, canvas.width, canvas.height, p);
-    drawPeakMarkers(ctx, canvas.width, canvas.height);
+    if (els.showIndexBadges.checked) drawPeakMarkers(ctx, canvas.width, canvas.height);
   });
 }
 
@@ -997,9 +1043,10 @@ canvas.addEventListener('mousemove', (e) => {
 });
 canvas.addEventListener('mouseleave', () => { tooltip.style.display = 'none'; });
 
-['spread','noiseAmp','noiseScale','levels','lineWidth','indexInterval','fontSize',
- 'labelColor','followLineColor','labelStroke','peakShow','peakDotColor','peakLabelColor','peakFontSize',
- 'bgColor','contourColor','indexColor']
+['spread','noiseAmp','noiseScale','levels','lineWidth','indexInterval','startRadius','fontSize',
+ 'labelColor','followLineColor','labelStroke','peakShow','peakDotColor','basinDotColor',
+ 'peakLabelColor','peakLabelBg','peakFontSize',
+ 'bgColor','contourColor','indexColor','showIndexBadges']
   .forEach((id) => els[id].addEventListener('input', scheduleRender));
 
 els.unifyIndexColor.addEventListener('change', () => {
@@ -1015,7 +1062,7 @@ function bindValDisplay(id) {
   input.addEventListener('input', update);
   update();
 }
-['spread','noiseAmp','noiseScale','levels','lineWidth','indexInterval','fontSize','peakFontSize']
+['spread','noiseAmp','noiseScale','levels','lineWidth','indexInterval','startRadius','fontSize','peakFontSize']
   .forEach(bindValDisplay);
 
 document.getElementById('exportBtn').addEventListener('click', () => {
