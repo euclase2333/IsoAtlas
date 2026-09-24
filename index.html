@@ -118,7 +118,7 @@
         </div>
         <div class="field">
           <label>地形自然扭曲 <span class="sub">noise amount</span></label>
-          <div class="row"><input id="noiseAmp" type="range" min="0" max="80" value="28" /><span class="val" id="noiseAmpVal">28</span></div>
+          <div class="row"><input id="noiseAmp" type="range" min="0" max="300" value="28" /><span class="val" id="noiseAmpVal">28</span></div>
         </div>
         <div class="field">
           <label>噪声细节 <span class="sub">noise detail</span></label>
@@ -145,13 +145,18 @@
           <label>线条粗细 <span class="sub">line width</span></label>
           <div class="row"><input id="lineWidth" type="range" min="0.5" max="3" step="0.1" value="1" /><span class="val" id="lineWidthVal">1</span></div>
         </div>
+        <label class="checkline" style="margin-bottom:10px;"><input id="showIndex" type="checkbox" checked />显示计曲线（加粗的等高线；关闭后所有线粗细一致）</label>
         <div class="field">
           <label>计曲线间隔 <span class="sub">每隔几条加粗一条</span></label>
           <div class="row"><input id="indexInterval" type="range" min="2" max="10" value="5" /><span class="val" id="indexIntervalVal">5</span></div>
         </div>
         <div class="field">
-          <label>起始半径 <span class="sub">离每个中心点多远才开始出现等高线，0=不留白</span></label>
+          <label>山 留白范围 <span class="sub">山顶周围这个距离内的整条等高线（含数字）直接删除，0=不留白</span></label>
           <div class="row"><input id="startRadius" type="range" min="0" max="250" value="0" /><span class="val" id="startRadiusVal">0</span></div>
+        </div>
+        <div class="field">
+          <label>盆地 留白范围 <span class="sub">盆底周围这个距离内的整条等高线（含数字）直接删除，0=不留白</span></label>
+          <div class="row"><input id="basinStartRadius" type="range" min="0" max="250" value="0" /><span class="val" id="basinStartRadiusVal">0</span></div>
         </div>
       </div>
     </div>
@@ -304,10 +309,10 @@ function fontStack(family) {
 }
 
 const els = {};
-['spread','noiseAmp','noiseScale','levels','lineWidth','indexInterval','startRadius',
+['spread','noiseAmp','noiseScale','levels','lineWidth','indexInterval','startRadius','basinStartRadius',
  'fontSize','labelColor','followLineColor','labelStroke',
  'peakShow','peakDotColor','basinDotColor','peakLabelColor','peakLabelBg','peakFontSize',
- 'bgColor','contourColor','unifyIndexColor','indexColor','showIndexBadges',
+ 'bgColor','contourColor','unifyIndexColor','showIndex','indexColor','showIndexBadges',
  'outputWidth','outputHeight','lockAspect','dpiInput','exportFormat','exportBg'].forEach(id => els[id] = document.getElementById(id));
 
 const fontFamilySelect = document.getElementById('fontFamily');
@@ -346,9 +351,18 @@ function noise2D(x, y) {
 }
 
 // 某一点的地形高度：把所有中心点的高斯贡献加起来（山正、盆地负）
-function heightAtLogical(x, y, peaksLogical, spread, noiseAmp, noiseScale) {
-  const warpX = (noise2D(x * noiseScale, y * noiseScale) - 0.5) * noiseAmp;
-  const warpY = (noise2D(x * noiseScale + 50, y * noiseScale + 50) - 0.5) * noiseAmp;
+function heightAtLogical(x, y, peaksLogical, spread, noiseAmp, noiseScale, startR) {
+  startR = startR || 0;
+  // 噪声扭曲在每个中心点处衰减到 0（离中心越近扭曲越小），
+  // 这样中心点本身不会被噪声推偏，保证它仍是山顶/盆底
+  let damp = 1;
+  const dampR = Math.max(spread * 0.5, 1);
+  for (let i = 0; i < peaksLogical.length; i++) {
+    const ddx = x - peaksLogical[i].x, ddy = y - peaksLogical[i].y;
+    damp *= 1 - Math.exp(-(ddx * ddx + ddy * ddy) / (2 * dampR * dampR));
+  }
+  const warpX = (noise2D(x * noiseScale, y * noiseScale) - 0.5) * noiseAmp * damp;
+  const warpY = (noise2D(x * noiseScale + 50, y * noiseScale + 50) - 0.5) * noiseAmp * damp;
   const wx = x + warpX, wy = y + warpY;
   let total = 0;
   for (let i = 0; i < peaksLogical.length; i++) {
@@ -360,12 +374,34 @@ function heightAtLogical(x, y, peaksLogical, spread, noiseAmp, noiseScale) {
   return total;
 }
 
+// 在中心点附近爬坡，找到真实的局部最高点（山）/ 最低点（盆地）
+// 单个山时就在中心点本身；多个中心点重叠时，极值会略微偏移，这里取真实位置
+function findExtremum(pk, peaksLogical, spread, noiseAmp, noiseScale) {
+  const sign = pk.height >= 0 ? 1 : -1;
+  let x = pk.x, y = pk.y;
+  let best = sign * heightAtLogical(x, y, peaksLogical, spread, noiseAmp, noiseScale, 0);
+  let step = Math.max(spread * 0.2, 2);
+  const limit = spread * 0.6;
+  for (let it = 0; it < 60 && step > 0.05; it++) {
+    let moved = false;
+    for (let k = 0; k < 8; k++) {
+      const a = k * Math.PI / 4;
+      const nx = x + Math.cos(a) * step, ny = y + Math.sin(a) * step;
+      if (Math.hypot(nx - pk.x, ny - pk.y) > limit) continue;
+      const v = sign * heightAtLogical(nx, ny, peaksLogical, spread, noiseAmp, noiseScale, 0);
+      if (v > best) { best = v; x = nx; y = ny; moved = true; }
+    }
+    if (!moved) step *= 0.5;
+  }
+  return { x, y, elev: sign * best };
+}
+
 // ================================================================
 // 网格 + Marching Squares
 // ================================================================
 function clampGridCount(maxPx) { return Math.max(140, Math.min(480, Math.round(maxPx / 25))); }
 
-function buildHeightGrid(gridCount, logicalW, logicalH, peaksLogical, spread, noiseAmp, noiseScale) {
+function buildHeightGrid(gridCount, logicalW, logicalH, peaksLogical, spread, noiseAmp, noiseScale, startR) {
   const cellSize = logicalW / gridCount;
   const rows = Math.round(logicalH / cellSize);
   const grid = [];
@@ -375,7 +411,7 @@ function buildHeightGrid(gridCount, logicalW, logicalH, peaksLogical, spread, no
     const row = [];
     for (let i = 0; i <= gridCount; i++) {
       const x = i * cellSize, y = j * cellSize;
-      const h = heightAtLogical(x, y, peaksLogical, spread, noiseAmp, noiseScale);
+      const h = heightAtLogical(x, y, peaksLogical, spread, noiseAmp, noiseScale, startR);
       row.push(h);
       if (h > maxH) { maxH = h; maxPt = [x, y]; }
       if (h < minH) minH = h;
@@ -427,18 +463,20 @@ function traceContour(grid, cols, rows, cellSize, threshold) {
   return segments;
 }
 
-// 把落在"任意一个中心点周围 startRadius 范围内"的线段丢掉，
-// 这样每个山顶/盆地中心附近就会留出一圈空白，不画等高线
-// （startRadius = 0 时什么都不过滤，行为和以前完全一样）
-function filterSegmentsByStartRadius(segments, peaksLogical, startRadius) {
-  if (!startRadius || startRadius <= 0 || !peaksLogical.length) return segments;
-  return segments.filter((seg) => {
-    const mx = (seg[0][0] + seg[1][0]) / 2;
-    const my = (seg[0][1] + seg[1][1]) / 2;
+// 留白范围：整条等高线（连同上面的数字）完全落在某个中心点 R 范围内时，
+// 整条删掉；只要有一部分在 R 之外，就保留完整的一圈。地形本身不动，不会出现人工斜坡。
+function filterPathsByStartRadius(paths, peaksLogical, Rpeak, Rbasin) {
+  if (!((Rpeak > 0) || (Rbasin > 0)) || !peaksLogical.length) return paths;
+  return paths.filter((path) => {
     for (let i = 0; i < peaksLogical.length; i++) {
       const pk = peaksLogical[i];
-      const d = Math.hypot(mx - pk.x, my - pk.y);
-      if (d < startRadius) return false;
+      const R = pk.height < 0 ? Rbasin : Rpeak;
+      if (!(R > 0)) continue;
+      let allInside = true;
+      for (let j = 0; j < path.length; j++) {
+        if (Math.hypot(path[j][0] - pk.x, path[j][1] - pk.y) >= R) { allInside = false; break; }
+      }
+      if (allInside) return false;
     }
     return true;
   });
@@ -677,11 +715,10 @@ function buildSvgString(p, pxWidth, pxHeight, includeBackground, dpi) {
   if (range > 0.01) {
     for (let i = 1; i <= p.levels; i++) {
       const threshold = minH + (range * i) / (p.levels + 1);
-      const isIndex = i % p.indexInterval === 0;
+      const isIndex = p.showIndex && i % p.indexInterval === 0;
       let segments = traceContour(grid, cols, rows, cellSize, threshold);
-      segments = filterSegmentsByStartRadius(segments, peaksLogical, p.startRadius);
       if (!segments.length) continue;
-      const paths = chainSegments(segments);
+      const paths = filterPathsByStartRadius(chainSegments(segments), peaksLogical, p.startRadius, p.basinStartRadius);
 
       const strokeColor = isIndex ? (p.unifyIndexColor ? p.contourColor : p.indexColor) : p.contourColor;
       const alpha = isIndex ? 1 : 0.42;
@@ -733,9 +770,10 @@ function buildSvgString(p, pxWidth, pxHeight, includeBackground, dpi) {
   if (p.peakShow) {
     peaksLogical.forEach((pk) => {
       const isBasin = pk.height < 0;
-      const elev = heightAtLogical(pk.x, pk.y, peaksLogical, p.spread, p.noiseAmp, p.noiseScale);
+      const ex = findExtremum(pk, peaksLogical, p.spread, p.noiseAmp, p.noiseScale);
+      const elev = ex.elev;
       const dotColor = isBasin ? p.basinDotColor : p.peakDotColor;
-      const cx = pk.x * scaleFactor, cy = pk.y * scaleFactor;
+      const cx = ex.x * scaleFactor, cy = ex.y * scaleFactor;
       parts.push(
         `<circle cx="${cx.toFixed(2)}" cy="${cy.toFixed(2)}" r="${(5 * scaleFactor).toFixed(2)}" fill="${dotColor}" stroke="#ffffff" stroke-width="${(1.5 * scaleFactor).toFixed(2)}" />`
       );
@@ -1088,7 +1126,7 @@ function collectParams() {
     spread: Number(els.spread.value),
     noiseAmp: Number(els.noiseAmp.value), noiseScale: Number(els.noiseScale.value) / 1000,
     levels: Number(els.levels.value), lineWidth: Number(els.lineWidth.value),
-    indexInterval: Number(els.indexInterval.value), startRadius: Number(els.startRadius.value),
+    indexInterval: Number(els.indexInterval.value), startRadius: Number(els.startRadius.value), basinStartRadius: Number(els.basinStartRadius.value),
     fontSize: Number(els.fontSize.value), fontFamily: currentFontFamily,
     labelColor: els.labelColor.value, followLineColor: els.followLineColor.checked,
     labelStroke: els.labelStroke.checked,
@@ -1097,7 +1135,7 @@ function collectParams() {
     peakLabelColor: els.peakLabelColor.value, peakLabelBg: els.peakLabelBg.value,
     peakFontSize: Number(els.peakFontSize.value),
     bgColor: els.bgColor.value, contourColor: els.contourColor.value,
-    unifyIndexColor: els.unifyIndexColor.checked, indexColor: els.indexColor.value,
+    unifyIndexColor: els.unifyIndexColor.checked, showIndex: els.showIndex.checked, indexColor: els.indexColor.value,
   };
 }
 
@@ -1133,11 +1171,10 @@ function drawScene(targetCtx, pxWidth, pxHeight, p, includeBackground = true) {
   if (range > 0.01) {
     for (let i = 1; i <= p.levels; i++) {
       const threshold = minH + (range * i) / (p.levels + 1);
-      const isIndex = i % p.indexInterval === 0;
+      const isIndex = p.showIndex && i % p.indexInterval === 0;
       let segments = traceContour(grid, cols, rows, cellSize, threshold);
-      segments = filterSegmentsByStartRadius(segments, peaksLogical, p.startRadius);
       if (!segments.length) continue;
-      const paths = chainSegments(segments);
+      const paths = filterPathsByStartRadius(chainSegments(segments), peaksLogical, p.startRadius, p.basinStartRadius);
 
       const strokeColor = isIndex ? (p.unifyIndexColor ? p.contourColor : p.indexColor) : p.contourColor;
       const alpha = isIndex ? 1 : 0.42;
@@ -1190,10 +1227,11 @@ function drawScene(targetCtx, pxWidth, pxHeight, p, includeBackground = true) {
       // 用该点自己的坐标，重新算一次这个位置真实的海拔
       // （地形是所有中心点叠加+噪声的结果，直接用这个点自身坐标算，
       //   比用存进去的 height 数值更准确，能反映山体融合后的真实高度）
-      const elev = heightAtLogical(pk.x, pk.y, peaksLogical, p.spread, p.noiseAmp, p.noiseScale);
+      const ex = findExtremum(pk, peaksLogical, p.spread, p.noiseAmp, p.noiseScale);
+      const elev = ex.elev;
 
       targetCtx.beginPath();
-      targetCtx.arc(pk.x, pk.y, 5, 0, Math.PI * 2);
+      targetCtx.arc(ex.x, ex.y, 5, 0, Math.PI * 2);
       targetCtx.fillStyle = isBasin ? p.basinDotColor : p.peakDotColor;
       targetCtx.fill();
       targetCtx.strokeStyle = '#ffffff';
@@ -1201,7 +1239,7 @@ function drawScene(targetCtx, pxWidth, pxHeight, p, includeBackground = true) {
       targetCtx.stroke();
 
       const label = `Elev: ${Math.round(elev)}m`;
-      const tx = pk.x + 10, ty = pk.y;
+      const tx = ex.x + 10, ty = ex.y;
       const tw = targetCtx.measureText(label).width;
       targetCtx.fillStyle = p.peakLabelBg; // 不透明底色块
       targetCtx.fillRect(tx - 4, ty - p.peakFontSize * 0.75, tw + 8, p.peakFontSize * 1.5);
@@ -1270,12 +1308,13 @@ canvas.addEventListener('mousemove', (e) => {
 });
 canvas.addEventListener('mouseleave', () => { tooltip.style.display = 'none'; });
 
-['spread','noiseAmp','noiseScale','levels','lineWidth','indexInterval','startRadius','fontSize',
+['spread','noiseAmp','noiseScale','levels','lineWidth','indexInterval','startRadius','basinStartRadius','fontSize',
  'labelColor','followLineColor','labelStroke','peakShow','peakDotColor','basinDotColor',
  'peakLabelColor','peakLabelBg','peakFontSize',
  'bgColor','contourColor','indexColor','showIndexBadges']
   .forEach((id) => els[id].addEventListener('input', scheduleRender));
 
+els.showIndex.addEventListener('change', scheduleRender);
 els.unifyIndexColor.addEventListener('change', () => {
   indexColorRow.style.display = els.unifyIndexColor.checked ? 'none' : 'flex';
   scheduleRender();
@@ -1289,7 +1328,7 @@ function bindValDisplay(id) {
   input.addEventListener('input', update);
   update();
 }
-['spread','noiseAmp','noiseScale','levels','lineWidth','indexInterval','startRadius','fontSize','peakFontSize']
+['spread','noiseAmp','noiseScale','levels','lineWidth','indexInterval','startRadius','basinStartRadius','fontSize','peakFontSize']
   .forEach(bindValDisplay);
 
 // ================================================================
