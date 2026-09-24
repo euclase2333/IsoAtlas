@@ -179,7 +179,7 @@
           <span>数字颜色</span>
           <label class="checkline"><input id="followLineColor" type="checkbox" checked />跟随线条颜色</label>
         </div>
-        <label class="checkline"><input id="labelStroke" type="checkbox" checked />数字描边（复杂背景更清晰）</label>
+        <label class="checkline"><input id="labelStroke" type="checkbox" />数字描边（默认关闭；开启后预览和 PNG/JPG/SVG 导出都会带描边）</label>
       </div>
     </div>
 
@@ -593,7 +593,9 @@ function textToPathD(text, fontFamily, fontPx, bold) {
   const descent = (metrics.actualBoundingBoxDescent || fontPx * SS * 0.25) / SS;
 
   const pad = Math.max(4, fontPx * 0.3); // 目标坐标系下的留白
-  const padSS = pad * SS;
+  // 注意：留白、画布宽高必须是整数。fontPx 乘了缩放系数后经常是小数，
+  // 如果 cw/ch 带小数，下面"高度网格"的行列数会和 traceContour 循环次数对不上，导出 SVG 时直接报错。
+  const padSS = Math.ceil(pad * SS);
   const cw = Math.ceil(width * SS) + padSS * 2;
   const ch = Math.ceil((ascent + descent) * SS) + padSS * 2;
   if (cw <= 0 || ch <= 0 || cw > 4000 || ch > 4000) return null; // 极端情况下（字号异常大）直接放弃，避免卡死
@@ -708,14 +710,21 @@ function buildSvgString(p, pxWidth, pxHeight, includeBackground, dpi) {
           const deg = ((l.angle * 180) / Math.PI).toFixed(2);
           const dx = (-glyph.width / 2).toFixed(2);
           const dy = glyph.baselineOffset.toFixed(2);
-          let strokeAttr = '';
+          // 数字本体：永远是纯填充（fill）+ 明确不带描边（stroke="none"），
+          // 在 Illustrator 里就是一块实心色块，"0""8" 的镂空靠 evenodd 保留。
+          const glyphPath =
+            `<path d="${glyph.d}" transform="translate(${tx},${ty}) rotate(${deg}) translate(${dx},${dy})" fill="${fillColor}" fill-rule="evenodd" stroke="none" />`;
+          // 数字描边（可选）：和预览里 canvas 的顺序完全一致——先画一圈"底色描边"，再把数字本体盖在上面。
+          // 注意：SVG 里同一个 path 同时写 fill 和 stroke 时，描边是画在填充"上面"的，
+          // 而且描边是沿轮廓居中的，会把数字笔画内侧吃掉一半，看起来就像"只剩边框、里面空了"。
+          // 所以描边必须拆成独立的一层放在下面，不能挂在数字本体的 path 上。
           if (p.labelStroke) {
             const sw = (Math.max(2, p.fontSize * 0.2) * scaleFactor).toFixed(2);
-            strokeAttr = ` stroke="${p.bgColor}" stroke-width="${sw}" stroke-linejoin="round"`;
+            parts.push(
+              `<path d="${glyph.d}" transform="translate(${tx},${ty}) rotate(${deg}) translate(${dx},${dy})" fill="${p.bgColor}" fill-rule="evenodd" stroke="${p.bgColor}" stroke-width="${sw}" stroke-linejoin="round" />`
+            );
           }
-          parts.push(
-            `<path d="${glyph.d}" transform="translate(${tx},${ty}) rotate(${deg}) translate(${dx},${dy})" fill="${fillColor}" fill-rule="evenodd"${strokeAttr} />`
-          );
+          parts.push(glyphPath);
         });
       });
     }
