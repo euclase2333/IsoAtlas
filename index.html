@@ -12,41 +12,29 @@
     background: #f4f4f6;
     color: #222;
   }
-  /* 面板放在右边：.preview 排在前面，.panel 排在后面 */
-  .app {
-    display: flex;
-    flex-wrap: wrap;
-    min-height: 100vh;
-  }
+  .app { display: flex; flex-wrap: wrap; min-height: 100vh; }
   .panel {
-    width: 340px;
-    padding: 20px 22px;
-    background: #ffffff;
-    border-left: 1px solid #e2e2e6;
-    max-height: 100vh;
-    overflow-y: auto;
-    order: 2;
+    width: 340px; padding: 20px 22px; background: #ffffff;
+    border-left: 1px solid #e2e2e6; max-height: 100vh; overflow-y: auto; order: 2;
   }
-  .preview {
-    order: 1;
-    flex: 1; display: flex; align-items: center; justify-content: center; padding: 24px; position: relative;
-  }
+  .preview { order: 1; flex: 1; display: flex; align-items: center; justify-content: center; padding: 24px; position: relative; }
 
   .panel h1 { font-size: 19px; margin: 0 0 4px; }
   .panel .hint { font-size: 12.5px; color: #777; margin-bottom: 16px; line-height: 1.5; }
 
-  /* ---- 可折叠分组区块 ---- */
-  .section { margin-bottom: 8px; border-top: 1px solid #eee; padding-top: 12px; }
+  .section { margin-bottom: 8px; border-top: 1px solid #eee; padding-top: 6px; }
   .section:first-of-type { border-top: none; }
   .section-title {
     font-size: 13px; font-weight: 700; color: #2563eb;
-    margin-bottom: 10px; letter-spacing: 1px; text-transform: uppercase;
+    letter-spacing: 1px; text-transform: uppercase;
     cursor: pointer; user-select: none;
     display: flex; align-items: center; justify-content: space-between;
+    padding: 10px 6px; border-radius: 6px; margin-bottom: 4px;
   }
-  .section-title .chevron { transition: transform .18s; font-size: 11px; color: #94a3b8; }
-  .section-title.collapsed .chevron { transform: rotate(-90deg); }
-  .section-body { overflow: hidden; }
+  .section-title:hover { background: #f2f5ff; }
+  .chevron { font-size: 22px; font-weight: 900; color: #2563eb; line-height: 1; }
+  .section-title.collapsed .chevron { color: #a3adc2; }
+  .section-body { overflow: hidden; padding: 0 2px 6px; }
   .section-body.hidden { display: none; }
 
   .field { margin-bottom: 14px; }
@@ -55,83 +43,68 @@
   .field .row { display: flex; align-items: center; gap: 8px; }
   .field input[type="range"] { flex: 1; }
   .field .val { width: 44px; text-align: right; font-size: 12.5px; color: #555; }
-  .field input[type="number"] {
-    width: 100%; padding: 6px 8px; border: 1px solid #ddd; border-radius: 6px; font-size: 13px;
-  }
-  .field input[type="color"] {
-    width: 44px; height: 30px; border: 1px solid #ddd; border-radius: 6px; padding: 2px; background: #fff;
-  }
-  .field select, .field input[type="text"] {
-    width: 100%; padding: 6px 8px; border: 1px solid #ddd; border-radius: 6px; font-size: 13px; background: #fff;
-  }
+  .field input[type="number"] { width: 100%; padding: 6px 8px; border: 1px solid #ddd; border-radius: 6px; font-size: 13px; }
+  .field input[type="color"] { width: 44px; height: 30px; border: 1px solid #ddd; border-radius: 6px; padding: 2px; background: #fff; }
+  .field select, .field input[type="text"] { width: 100%; padding: 6px 8px; border: 1px solid #ddd; border-radius: 6px; font-size: 13px; background: #fff; }
   .inline2 { display: flex; gap: 10px; }
   .inline2 > div { flex: 1; }
   .checkline { display: flex; align-items: center; gap: 6px; font-size: 12.5px; margin-top: 6px; color: #444; }
   .checkline input { margin: 0; }
 
   .presets { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 12px; }
-  .presets button {
-    flex: 1 1 45%; padding: 8px 4px; font-size: 12px; border: 1px solid #ddd; border-radius: 6px;
-    background: #fafafa; cursor: pointer;
-  }
+  .presets button { flex: 1 1 45%; padding: 8px 4px; font-size: 12px; border: 1px solid #ddd; border-radius: 6px; background: #fafafa; cursor: pointer; }
   .presets button:hover { background: #eef2ff; border-color: #c7d5fb; }
 
   .colorpair { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; }
   .colorpair span { font-size: 12.5px; flex: 1; }
 
-  #fontPreviewBox {
-    margin-top: 8px; padding: 10px; border: 1px dashed #ddd; border-radius: 6px;
-    background: #fafafa; font-size: 18px; text-align: center; color: #222;
-  }
+  #fontPreviewBox { margin-top: 8px; padding: 10px; border: 1px dashed #ddd; border-radius: 6px; background: #fafafa; font-size: 18px; text-align: center; color: #222; }
   #fontWarning { display: none; color: #c0392b; font-size: 11.5px; margin-top: 4px; }
-
-  #physicalSize, #previewNote {
-    font-size: 12px; color: #666; background: #f6f7fb; border-radius: 6px; padding: 8px 10px; margin-top: 6px; line-height: 1.5;
-  }
+  #physicalSize, #previewNote { font-size: 12px; color: #666; background: #f6f7fb; border-radius: 6px; padding: 8px 10px; margin-top: 6px; line-height: 1.5; }
   #exportWarn { font-size: 11.5px; color: #b45309; margin-top: 6px; line-height: 1.5; }
-
-  #exportBtn {
-    width: 100%; padding: 12px; background: #2563eb; color: white; border: none;
-    border-radius: 8px; font-size: 15px; cursor: pointer; margin-top: 10px;
-  }
+  #exportBtn { width: 100%; padding: 12px; background: #2563eb; color: white; border: none; border-radius: 8px; font-size: 15px; cursor: pointer; margin-top: 10px; }
   #exportBtn:hover { background: #1d4ed8; }
   #exportBtn:disabled { background: #93a9d8; cursor: wait; }
 
-  canvas {
-    background: #050505; border: 1px solid #222; box-shadow: 0 2px 16px rgba(0,0,0,0.25);
-    max-width: 100%; height: auto; cursor: crosshair;
-  }
-  #tooltip {
-    position: absolute; pointer-events: none; background: rgba(0,0,0,0.75); color: #fff;
-    font-size: 12px; padding: 4px 8px; border-radius: 4px; display: none; white-space: nowrap;
-  }
+  /* ---- 中心点列表 ---- */
+  #peakList { display: flex; flex-direction: column; gap: 2px; margin-top: 6px; }
+  .peak-row { display: flex; align-items: center; gap: 6px; padding: 5px 4px; border-radius: 6px; cursor: pointer; }
+  .peak-row:hover { background: #f7f8fb; }
+  .peak-row.selected { background: #eaf0ff; }
+  .peak-badge { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; border: 1px solid rgba(0,0,0,0.15); }
+  .peak-name { font-size: 12px; color: #555; width: 34px; flex-shrink: 0; }
+  .peak-row input[type="number"] { width: 72px; padding: 4px 6px; border: 1px solid #ddd; border-radius: 5px; font-size: 12px; }
+  .peak-del { border: none; background: transparent; color: #aaa; cursor: pointer; font-size: 15px; padding: 2px 6px; margin-left: auto; }
+  .peak-del:hover { color: #dc2626; }
+  #addPeakBtn { width: 100%; padding: 8px; margin-top: 8px; border: 1px dashed #93a9d8; border-radius: 6px; background: #f7f9ff; color: #2563eb; cursor: pointer; font-size: 13px; }
+  #addPeakBtn:hover { background: #eef2ff; }
+
+  canvas { background: #ffffff; border: 1px solid #222; box-shadow: 0 2px 16px rgba(0,0,0,0.25); max-width: 100%; height: auto; cursor: crosshair; }
+  #tooltip { position: absolute; pointer-events: none; background: rgba(0,0,0,0.75); color: #fff; font-size: 12px; padding: 4px 8px; border-radius: 4px; display: none; white-space: nowrap; }
 </style>
 </head>
 <body>
 
 <div class="app">
 
-  <!-- ========== 预览画布（放在左边） ========== -->
   <div class="preview">
     <canvas id="canvas" width="800" height="800"></canvas>
     <div id="tooltip"></div>
   </div>
 
-  <!-- ========== 参数面板（放在右边，每组可折叠） ========== -->
   <div class="panel">
     <h1>IsoAtlas</h1>
-    <p class="hint">点击分组标题可以折叠/展开。拖动滑块实时看效果，点击画布可移动山峰。</p>
+    <p class="hint">
+      点分组标题可折叠/展开。画布上的圆点是中心点，可以直接拖动；
+      右侧列表可添加/删除、修改高度（正数=山，负数=盆地）。
+    </p>
 
     <!-- ---------------- 地形 ---------------- -->
     <div class="section">
       <div class="section-title" data-target="body-terrain">地形<span class="chevron">▾</span></div>
       <div class="section-body" id="body-terrain">
         <div class="field">
-          <label>山峰高度 <span class="sub">peak</span></label>
-          <div class="row"><input id="peak" type="range" min="50" max="500" value="200" /><span class="val" id="peakVal">200</span></div>
-        </div>
-        <div class="field">
-          <label>山的宽度 <span class="sub">spread</span></label>
+          <label>山/盆地 宽度 <span class="sub">spread，所有中心点共用</span></label>
           <div class="row"><input id="spread" type="range" min="60" max="400" value="180" /><span class="val" id="spreadVal">180</span></div>
         </div>
         <div class="field">
@@ -141,6 +114,11 @@
         <div class="field">
           <label>噪声细节 <span class="sub">noise detail</span></label>
           <div class="row"><input id="noiseScale" type="range" min="5" max="50" value="12" /><span class="val" id="noiseScaleVal">12</span></div>
+        </div>
+        <div class="field">
+          <label>中心点列表 <span class="sub">拖动画布上的圆点可移动位置</span></label>
+          <div id="peakList"></div>
+          <button id="addPeakBtn">＋ 添加中心点</button>
         </div>
       </div>
     </div>
@@ -173,7 +151,7 @@
           <div class="row"><input id="fontSize" type="range" min="6" max="200" value="12" /><span class="val" id="fontSizeVal">12</span></div>
         </div>
         <div class="field">
-          <label>字体 <span class="sub">默认 Arial，来自你上传的字体清单</span></label>
+          <label>字体 <span class="sub">默认 Arial</span></label>
           <select id="fontFamily"></select>
           <div class="row" style="margin-top:8px;">
             <input id="customFontInput" type="text" placeholder="或手动输入字体名，如 Source Han Sans" />
@@ -183,7 +161,7 @@
           <div id="fontWarning">该字体在本机不可用，已自动使用兜底字体显示（不影响其他人电脑）。</div>
         </div>
         <div class="colorpair">
-          <input id="labelColor" type="color" value="#ffffff" />
+          <input id="labelColor" type="color" value="#000000" />
           <span>数字颜色</span>
           <label class="checkline"><input id="followLineColor" type="checkbox" checked />跟随线条颜色</label>
         </div>
@@ -195,9 +173,9 @@
     <div class="section">
       <div class="section-title" data-target="body-peak">山顶标记<span class="chevron">▾</span></div>
       <div class="section-body" id="body-peak">
-        <label class="checkline" style="margin-bottom:10px;"><input id="peakShow" type="checkbox" checked />显示山顶红点 + 海拔标注</label>
+        <label class="checkline" style="margin-bottom:10px;"><input id="peakShow" type="checkbox" checked />显示最高点红点 + 海拔标注</label>
         <div class="colorpair"><input id="peakDotColor" type="color" value="#ef4444" /><span>圆点颜色</span></div>
-        <div class="colorpair"><input id="peakLabelColor" type="color" value="#ffffff" /><span>文字颜色</span></div>
+        <div class="colorpair"><input id="peakLabelColor" type="color" value="#000000" /><span>文字颜色</span></div>
         <div class="field">
           <label>文字字号 <span class="sub">字体跟随上方"标注"里选的字体</span></label>
           <div class="row"><input id="peakFontSize" type="range" min="8" max="60" value="13" /><span class="val" id="peakFontSizeVal">13</span></div>
@@ -210,17 +188,17 @@
       <div class="section-title" data-target="body-color">颜色<span class="chevron">▾</span></div>
       <div class="section-body" id="body-color">
         <div class="presets">
-          <button data-preset="light">白底黑线</button>
-          <button data-preset="dark">黑底白线</button>
-          <button data-preset="terrain">地形图（绿底黄线）</button>
-          <button data-preset="kraft">牛皮纸</button>
-          <button data-preset="sky">蓝色天空（白底蓝线）</button>
-          <button data-preset="ocean">蓝色海洋（蓝底白线）</button>
+          <button data-preset="defaultWhite" title="经典白底黑线，适合打印">默认白</button>
+          <button data-preset="defaultBlack" title="经典黑底白线，适合深色背景网站">默认黑</button>
+          <button data-preset="terrain" title="绿色底配黄色线，仿传统地形图配色">地形图</button>
+          <button data-preset="kraft" title="米黄底配棕色线，复古地图质感">牛皮纸</button>
+          <button data-preset="sky" title="白底配蓝色线，清爽明快">天空蓝</button>
+          <button data-preset="ocean" title="深蓝底配白色线，海洋探测图风格">深海蓝</button>
         </div>
-        <div class="colorpair"><input id="bgColor" type="color" value="#0a0a0a" /><span>背景颜色</span></div>
-        <div class="colorpair"><input id="contourColor" type="color" value="#ffffff" /><span>普通等高线颜色</span></div>
+        <div class="colorpair"><input id="bgColor" type="color" value="#ffffff" /><span>背景颜色</span></div>
+        <div class="colorpair"><input id="contourColor" type="color" value="#000000" /><span>普通等高线颜色</span></div>
         <label class="checkline" style="margin-bottom:8px;"><input id="unifyIndexColor" type="checkbox" checked />计曲线使用相同颜色</label>
-        <div class="colorpair" id="indexColorRow"><input id="indexColor" type="color" value="#ffffff" /><span>计曲线颜色</span></div>
+        <div class="colorpair" id="indexColorRow"><input id="indexColor" type="color" value="#000000" /><span>计曲线颜色</span></div>
       </div>
     </div>
 
@@ -250,15 +228,23 @@
 <script>
 /*
   ========================================================
-  这一版相对上一版的调整（都是细节打磨，没有动底层算法）：
-  1. 面板挪到右边：靠 CSS flex 的 order 属性实现，.preview 排 order:1，
-     .panel 排 order:2，画布自然就在左边、面板在右边了。
-  2. 每个分组可以折叠：点标题就是切换 .section-body 的 display。
-  3. 山顶的红点/文字变成可选项，而且颜色、字号都能单独调。
-  4. 字体检测名单换成了你电脑上实际安装的那份列表，默认选 Arial；
-     真正画到 canvas 上时，字体串会带一串"万一 Arial 也没有"的
-     兜底字体（Helvetica Neue → 苹方 → 微软雅黑 → 黑体 → 系统默认无衬线），
-     这样即使打开网页的人电脑上什么都没装，也不会变成空白或乱码字体。
+  这一版新增的核心内容：多中心点地形（山 + 盆地 + 自动融合）
+  ------------------------------------------------------
+  以前只有一个"中心点"变量。现在改成一个数组 peaks = [{fx, fy, height}, ...]，
+  每个点存的还是"占画布宽/高的比例"（跟以前一样，方便切换导出尺寸时不跑位），
+  height 可以是正数（山，往上凸）也可以是负数（盆地，往下凹）。
+
+  算某个点的海拔时，把所有中心点的"贡献"加在一起：
+      总高度 = Σ( 第 n 个中心点的高度 × 以它为中心的高斯衰减 )
+  这样做有一个很好的副作用——两个山离得近，两边的高斯曲线会自然叠加变高，
+  等高线看起来就像"融合"在一起了，不需要额外写融合逻辑，
+  这也是当初把地形算法和等高线追踪算法（marching squares）分开设计的意义：
+  只要 heightAt() 换成"求和"，其余的网格计算、等高线追踪、标注留白、
+  颜色、导出逻辑完全不用动。
+
+  等高线的层级范围，以前是固定的"0 到山峰高度"，现在整个地形有正有负，
+  所以改成："整张地形网格里实际算出来的最低点 到 最高点"之间平均分层，
+  这样无论你加多少山、多少盆地，等高线都会自动覆盖整个地形的起伏范围。
   ========================================================
 */
 
@@ -269,19 +255,20 @@ const tooltip = document.getElementById('tooltip');
 const LOGICAL_W = 800;
 const PREVIEW_MAX = 900;
 
-let center = { fx: 0.5, fy: 0.5 };
-let currentFontFamily = 'Arial';
+// ---------- 中心点（山 / 盆地）数据 ----------
+let peaks = [{ fx: 0.5, fy: 0.5, height: 200 }];
+let selectedIndex = 0;
+let draggingIndex = null;
 
-// 字体兜底链：选的字体如果访问者电脑上没有，会依次往后退
+let currentFontFamily = 'Arial';
 const FALLBACK_STACK = ['Arial', 'Helvetica Neue', 'PingFang SC', 'Microsoft YaHei', 'SimHei', 'sans-serif'];
 function fontStack(family) {
   const rest = FALLBACK_STACK.filter((f) => f !== family).map((f) => (f === 'sans-serif' ? f : `"${f}"`));
   return `"${family}", ${rest.join(', ')}`;
 }
 
-// ---------- 拿到控件 ----------
 const els = {};
-['peak','spread','noiseAmp','noiseScale','levels','lineWidth','indexInterval',
+['spread','noiseAmp','noiseScale','levels','lineWidth','indexInterval',
  'fontSize','labelColor','followLineColor','labelStroke',
  'peakShow','peakDotColor','peakLabelColor','peakFontSize',
  'bgColor','contourColor','unifyIndexColor','indexColor',
@@ -294,23 +281,22 @@ const fontWarning = document.getElementById('fontWarning');
 const indexColorRow = document.getElementById('indexColorRow');
 const physicalSizeEl = document.getElementById('physicalSize');
 const previewNoteEl = document.getElementById('previewNote');
+const peakListEl = document.getElementById('peakList');
 
-// ---------- 分组折叠 ----------
+// ---------- 分组折叠：点标题切换显示，箭头方向/颜色跟着变 ----------
 document.querySelectorAll('.section-title').forEach((title) => {
   title.addEventListener('click', () => {
     const body = document.getElementById(title.dataset.target);
-    body.classList.toggle('hidden');
-    title.classList.toggle('collapsed');
+    const nowCollapsed = body.classList.toggle('hidden');
+    title.classList.toggle('collapsed', nowCollapsed);
+    title.querySelector('.chevron').textContent = nowCollapsed ? '▸' : '▾';
   });
 });
 
 // ================================================================
-// 噪声函数（值噪声，效果类似 Perlin）
+// 噪声函数
 // ================================================================
-function hash(x, y) {
-  const s = Math.sin(x * 127.1 + y * 311.7) * 43758.5453123;
-  return s - Math.floor(s);
-}
+function hash(x, y) { const s = Math.sin(x * 127.1 + y * 311.7) * 43758.5453123; return s - Math.floor(s); }
 function fade(t) { return t * t * t * (t * (t * 6 - 15) + 10); }
 function noise2D(x, y) {
   const xi = Math.floor(x), yi = Math.floor(y);
@@ -322,37 +308,45 @@ function noise2D(x, y) {
   const nx1 = n01 + u * (n11 - n01);
   return nx0 + v * (nx1 - nx0);
 }
-function heightAtLogical(x, y, centerLogical, peak, spread, noiseAmp, noiseScale) {
+
+// 某一点的地形高度：把所有中心点的高斯贡献加起来（山正、盆地负）
+function heightAtLogical(x, y, peaksLogical, spread, noiseAmp, noiseScale) {
   const warpX = (noise2D(x * noiseScale, y * noiseScale) - 0.5) * noiseAmp;
   const warpY = (noise2D(x * noiseScale + 50, y * noiseScale + 50) - 0.5) * noiseAmp;
-  const dx = (x + warpX) - centerLogical.x;
-  const dy = (y + warpY) - centerLogical.y;
-  const dist = Math.sqrt(dx * dx + dy * dy);
-  return peak * Math.exp(-(dist * dist) / (2 * spread * spread));
+  const wx = x + warpX, wy = y + warpY;
+  let total = 0;
+  for (let i = 0; i < peaksLogical.length; i++) {
+    const pk = peaksLogical[i];
+    const dx = wx - pk.x, dy = wy - pk.y;
+    const d2 = dx * dx + dy * dy;
+    total += pk.height * Math.exp(-d2 / (2 * spread * spread));
+  }
+  return total;
 }
 
 // ================================================================
 // 网格 + Marching Squares
 // ================================================================
-function clampGridCount(maxPx) {
-  return Math.max(140, Math.min(480, Math.round(maxPx / 25)));
-}
-function buildHeightGrid(gridCount, logicalW, logicalH, centerLogical, peak, spread, noiseAmp, noiseScale) {
+function clampGridCount(maxPx) { return Math.max(140, Math.min(480, Math.round(maxPx / 25))); }
+
+function buildHeightGrid(gridCount, logicalW, logicalH, peaksLogical, spread, noiseAmp, noiseScale) {
   const cellSize = logicalW / gridCount;
   const rows = Math.round(logicalH / cellSize);
   const grid = [];
-  let maxH = -Infinity, maxPt = [centerLogical.x, centerLogical.y];
+  let maxH = -Infinity, maxPt = [logicalW / 2, logicalH / 2];
+  let minH = Infinity;
   for (let j = 0; j <= rows; j++) {
     const row = [];
     for (let i = 0; i <= gridCount; i++) {
       const x = i * cellSize, y = j * cellSize;
-      const h = heightAtLogical(x, y, centerLogical, peak, spread, noiseAmp, noiseScale);
+      const h = heightAtLogical(x, y, peaksLogical, spread, noiseAmp, noiseScale);
       row.push(h);
       if (h > maxH) { maxH = h; maxPt = [x, y]; }
+      if (h < minH) minH = h;
     }
     grid.push(row);
   }
-  return { grid, cellSize, rows, cols: gridCount, maxPt };
+  return { grid, cellSize, rows, cols: gridCount, maxH, maxPt, minH };
 }
 function lerpPoint(p0, p1, v0, v1, threshold) {
   if (v1 === v0) return p0;
@@ -520,7 +514,7 @@ function buildSubPolyline(path, cum, s0, s1, pointAt) {
 }
 
 // ================================================================
-// 颜色工具 & 预设（顺序：白底黑线 / 黑底白线 / 地形图 / 牛皮纸 / 蓝色天空 / 蓝色海洋）
+// 颜色工具 & 预设
 // ================================================================
 function hexToRgba(hex, alpha) {
   const h = hex.replace('#', '');
@@ -530,12 +524,12 @@ function hexToRgba(hex, alpha) {
   return `rgba(${r},${g},${b},${alpha})`;
 }
 const PRESETS = {
-  light:   { bg: '#ffffff', contour: '#1a1a1a', index: '#000000', label: '#000000' },
-  dark:    { bg: '#0a0a0a', contour: '#ffffff', index: '#ffffff', label: '#ffffff' },
-  terrain: { bg: '#2f6b3f', contour: '#f6c945', index: '#fff2b0', label: '#fff2b0' },
-  kraft:   { bg: '#d8c39c', contour: '#5b4324', index: '#3a2a14', label: '#3a2a14' },
-  sky:     { bg: '#ffffff', contour: '#1d6fe0', index: '#0b3f8a', label: '#0b3f8a' },
-  ocean:   { bg: '#08355c', contour: '#ffffff', index: '#ffffff', label: '#ffffff' },
+  defaultWhite: { bg: '#ffffff', contour: '#000000', index: '#000000', label: '#000000' },
+  defaultBlack: { bg: '#0a0a0a', contour: '#ffffff', index: '#ffffff', label: '#ffffff' },
+  terrain:      { bg: '#2f6b3f', contour: '#f6c945', index: '#fff2b0', label: '#fff2b0' },
+  kraft:        { bg: '#d8c39c', contour: '#5b4324', index: '#3a2a14', label: '#3a2a14' },
+  sky:          { bg: '#ffffff', contour: '#1d6fe0', index: '#0b3f8a', label: '#0b3f8a' },
+  ocean:        { bg: '#08355c', contour: '#ffffff', index: '#ffffff', label: '#ffffff' },
 };
 document.querySelectorAll('.presets button').forEach((btn) => {
   btn.addEventListener('click', () => {
@@ -549,7 +543,7 @@ document.querySelectorAll('.presets button').forEach((btn) => {
 });
 
 // ================================================================
-// 字体检测：名单直接取自你电脑上安装的字体列表，默认选 Arial
+// 字体检测
 // ================================================================
 const FONT_CANDIDATES = [
   '3603 Formation','accent normal','Ade','Agency FB','ALASKA','Aleo','Amelina Script','Ammonite',
@@ -728,11 +722,116 @@ function resizePreviewCanvas() {
 }
 
 // ================================================================
+// 中心点列表面板（添加 / 删除 / 改高度）
+// ================================================================
+function renderPeakList() {
+  peakListEl.innerHTML = '';
+  peaks.forEach((pk, idx) => {
+    const row = document.createElement('div');
+    row.className = 'peak-row' + (idx === selectedIndex ? ' selected' : '');
+    row.dataset.idx = idx;
+
+    const badge = document.createElement('span');
+    badge.className = 'peak-badge';
+    badge.style.background = pk.height < 0 ? '#7c3aed' : '#2563eb';
+
+    const name = document.createElement('span');
+    name.className = 'peak-name';
+    name.textContent = '点 ' + (idx + 1);
+
+    const heightInput = document.createElement('input');
+    heightInput.type = 'number';
+    heightInput.step = '10';
+    heightInput.value = pk.height;
+    heightInput.title = '正数=山，负数=盆地';
+    heightInput.addEventListener('input', (e) => {
+      pk.height = Number(e.target.value) || 0;
+      badge.style.background = pk.height < 0 ? '#7c3aed' : '#2563eb';
+      scheduleRender();
+    });
+    heightInput.addEventListener('click', (e) => e.stopPropagation());
+
+    const delBtn = document.createElement('button');
+    delBtn.className = 'peak-del';
+    delBtn.textContent = '✕';
+    delBtn.title = '删除这个中心点';
+    delBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      if (peaks.length <= 1) { alert('至少要保留一个中心点'); return; }
+      peaks.splice(idx, 1);
+      if (selectedIndex >= peaks.length) selectedIndex = peaks.length - 1;
+      renderPeakList();
+      scheduleRender();
+    });
+
+    row.addEventListener('click', () => {
+      selectedIndex = idx;
+      renderPeakList();
+      scheduleRender();
+    });
+
+    row.appendChild(badge);
+    row.appendChild(name);
+    row.appendChild(heightInput);
+    row.appendChild(delBtn);
+    peakListEl.appendChild(row);
+  });
+}
+
+document.getElementById('addPeakBtn').addEventListener('click', () => {
+  // 新点落在画布中央附近，稍微随机偏移，避免和已有点完全重叠
+  const fx = Math.min(0.85, Math.max(0.15, 0.5 + (Math.random() - 0.5) * 0.4));
+  const fy = Math.min(0.85, Math.max(0.15, 0.5 + (Math.random() - 0.5) * 0.4));
+  peaks.push({ fx, fy, height: 200 });
+  selectedIndex = peaks.length - 1;
+  renderPeakList();
+  scheduleRender();
+});
+
+// ---- 在画布上直接拖动中心点 ----
+function findPeakNear(clientX, clientY) {
+  const rect = canvas.getBoundingClientRect();
+  let best = -1, bestD = 18; // 18 屏幕像素的判定半径
+  peaks.forEach((pk, i) => {
+    const sx = rect.left + pk.fx * rect.width;
+    const sy = rect.top + pk.fy * rect.height;
+    const d = Math.hypot(clientX - sx, clientY - sy);
+    if (d < bestD) { bestD = d; best = i; }
+  });
+  return best;
+}
+canvas.addEventListener('mousedown', (e) => {
+  const idx = findPeakNear(e.clientX, e.clientY);
+  if (idx < 0) return;
+  draggingIndex = idx;
+  selectedIndex = idx;
+  renderPeakList();
+  const onMove = (ev) => {
+    const rect = canvas.getBoundingClientRect();
+    let fx = (ev.clientX - rect.left) / rect.width;
+    let fy = (ev.clientY - rect.top) / rect.height;
+    fx = Math.min(1, Math.max(0, fx));
+    fy = Math.min(1, Math.max(0, fy));
+    peaks[draggingIndex].fx = fx;
+    peaks[draggingIndex].fy = fy;
+    scheduleRender();
+  };
+  const onUp = () => {
+    draggingIndex = null;
+    window.removeEventListener('mousemove', onMove);
+    window.removeEventListener('mouseup', onUp);
+  };
+  window.addEventListener('mousemove', onMove);
+  window.addEventListener('mouseup', onUp);
+});
+
+// ================================================================
 // 主渲染
 // ================================================================
 function collectParams() {
   return {
-    peak: Number(els.peak.value), spread: Number(els.spread.value),
+    peaks,
+    spread: Number(els.spread.value),
     noiseAmp: Number(els.noiseAmp.value), noiseScale: Number(els.noiseScale.value) / 1000,
     levels: Number(els.levels.value), lineWidth: Number(els.lineWidth.value),
     indexInterval: Number(els.indexInterval.value),
@@ -761,40 +860,42 @@ function drawScene(targetCtx, pxWidth, pxHeight, p) {
   targetCtx.lineCap = 'round';
 
   const gridCount = clampGridCount(Math.max(pxWidth, pxHeight));
-  const centerLogical = { x: center.fx * logicalW, y: center.fy * logicalH };
-  const { grid, cellSize, rows, cols, maxPt } = buildHeightGrid(
-    gridCount, logicalW, logicalH, centerLogical, p.peak, p.spread, p.noiseAmp, p.noiseScale
+  const peaksLogical = p.peaks.map((pk) => ({ x: pk.fx * logicalW, y: pk.fy * logicalH, height: pk.height }));
+  const { grid, cellSize, rows, cols, maxH, maxPt, minH } = buildHeightGrid(
+    gridCount, logicalW, logicalH, peaksLogical, p.spread, p.noiseAmp, p.noiseScale
   );
 
+  const range = maxH - minH;
   const labelQueue = [];
   const padding = Math.max(6, p.fontSize * 0.5);
 
-  for (let i = 1; i <= p.levels; i++) {
-    const threshold = (p.peak * i) / (p.levels + 1);
-    if (threshold <= 0 || threshold >= p.peak) continue;
-    const isIndex = i % p.indexInterval === 0;
-    const segments = traceContour(grid, cols, rows, cellSize, threshold);
-    if (!segments.length) continue;
-    const paths = chainSegments(segments);
+  if (range > 0.01) {
+    for (let i = 1; i <= p.levels; i++) {
+      const threshold = minH + (range * i) / (p.levels + 1);
+      const isIndex = i % p.indexInterval === 0;
+      const segments = traceContour(grid, cols, rows, cellSize, threshold);
+      if (!segments.length) continue;
+      const paths = chainSegments(segments);
 
-    const strokeColor = isIndex ? (p.unifyIndexColor ? p.contourColor : p.indexColor) : p.contourColor;
-    const alpha = isIndex ? 1 : 0.42;
-    targetCtx.lineWidth = isIndex ? p.lineWidth * 2.4 : p.lineWidth;
-    targetCtx.strokeStyle = hexToRgba(strokeColor, alpha);
-    targetCtx.font = `${isIndex ? 'bold ' : ''}${p.fontSize}px ` + fontStack(p.fontFamily);
+      const strokeColor = isIndex ? (p.unifyIndexColor ? p.contourColor : p.indexColor) : p.contourColor;
+      const alpha = isIndex ? 1 : 0.42;
+      targetCtx.lineWidth = isIndex ? p.lineWidth * 2.4 : p.lineWidth;
+      targetCtx.strokeStyle = hexToRgba(strokeColor, alpha);
+      targetCtx.font = `${isIndex ? 'bold ' : ''}${p.fontSize}px ` + fontStack(p.fontFamily);
 
-    const text = `${Math.round(threshold)}m`;
-    paths.forEach((path) => {
-      const layout = layoutLabelsForPath(targetCtx, path, text, padding);
-      layout.keepRanges.forEach(([s0, s1]) => {
-        const pts = buildSubPolyline(path, layout.cum, s0, s1, layout.pointAt);
-        if (pts.length < 2) return;
-        targetCtx.beginPath();
-        pts.forEach((pt, idx) => (idx === 0 ? targetCtx.moveTo(pt[0], pt[1]) : targetCtx.lineTo(pt[0], pt[1])));
-        targetCtx.stroke();
+      const text = `${Math.round(threshold)}m`;
+      paths.forEach((path) => {
+        const layout = layoutLabelsForPath(targetCtx, path, text, padding);
+        layout.keepRanges.forEach(([s0, s1]) => {
+          const pts = buildSubPolyline(path, layout.cum, s0, s1, layout.pointAt);
+          if (pts.length < 2) return;
+          targetCtx.beginPath();
+          pts.forEach((pt, idx) => (idx === 0 ? targetCtx.moveTo(pt[0], pt[1]) : targetCtx.lineTo(pt[0], pt[1])));
+          targetCtx.stroke();
+        });
+        layout.labels.forEach((l) => labelQueue.push({ ...l, isIndex, strokeColor }));
       });
-      layout.labels.forEach((l) => labelQueue.push({ ...l, isIndex, strokeColor }));
-    });
+    }
   }
 
   labelQueue.forEach((l) => {
@@ -815,8 +916,7 @@ function drawScene(targetCtx, pxWidth, pxHeight, p) {
     targetCtx.restore();
   });
 
-  // ---- 山顶标记：可整体隐藏；圆点/文字颜色、字号可调；字体跟随全局选择 ----
-  if (p.peakShow) {
+  if (p.peakShow && isFinite(maxH)) {
     targetCtx.beginPath();
     targetCtx.arc(maxPt[0], maxPt[1], 5, 0, Math.PI * 2);
     targetCtx.fillStyle = p.peakDotColor;
@@ -828,7 +928,7 @@ function drawScene(targetCtx, pxWidth, pxHeight, p) {
     targetCtx.font = `bold ${p.peakFontSize}px ` + fontStack(p.fontFamily);
     targetCtx.textAlign = 'left';
     targetCtx.textBaseline = 'middle';
-    const label = `Elev: ${Math.round(p.peak)}m`;
+    const label = `Elev: ${Math.round(maxH)}m`;
     const tx = maxPt[0] + 10, ty = maxPt[1];
     const tw = targetCtx.measureText(label).width;
     targetCtx.fillStyle = 'rgba(0,0,0,0.7)';
@@ -840,30 +940,56 @@ function drawScene(targetCtx, pxWidth, pxHeight, p) {
   targetCtx.restore();
 }
 
+// ---- 只在"预览画布"上画的中心点圆点标记（不会出现在导出图片里） ----
+function drawPeakMarkers(targetCtx, pxWidth, pxHeight) {
+  const logicalW = LOGICAL_W;
+  const logicalH = LOGICAL_W * (pxHeight / pxWidth);
+  const scaleFactor = pxWidth / logicalW;
+  targetCtx.save();
+  targetCtx.scale(scaleFactor, scaleFactor);
+  peaks.forEach((pk, i) => {
+    const x = pk.fx * logicalW, y = pk.fy * logicalH;
+    const isBasin = pk.height < 0;
+    const r = i === selectedIndex ? 9 : 6;
+    targetCtx.beginPath();
+    targetCtx.arc(x, y, r, 0, Math.PI * 2);
+    targetCtx.fillStyle = isBasin ? '#7c3aed' : '#2563eb';
+    targetCtx.globalAlpha = 0.92;
+    targetCtx.fill();
+    targetCtx.globalAlpha = 1;
+    targetCtx.lineWidth = 2;
+    targetCtx.strokeStyle = '#ffffff';
+    targetCtx.stroke();
+    targetCtx.font = 'bold 10px monospace';
+    targetCtx.textAlign = 'center';
+    targetCtx.textBaseline = 'middle';
+    targetCtx.fillStyle = '#ffffff';
+    targetCtx.fillText(String(i + 1), x, y);
+  });
+  targetCtx.restore();
+}
+
 let renderScheduled = false;
 function scheduleRender() {
   if (renderScheduled) return;
   renderScheduled = true;
   requestAnimationFrame(() => {
     renderScheduled = false;
-    drawScene(ctx, canvas.width, canvas.height, collectParams());
+    const p = collectParams();
+    drawScene(ctx, canvas.width, canvas.height, p);
+    drawPeakMarkers(ctx, canvas.width, canvas.height);
   });
 }
 
-canvas.addEventListener('click', (e) => {
-  const rect = canvas.getBoundingClientRect();
-  center.fx = (e.clientX - rect.left) / rect.width;
-  center.fy = (e.clientY - rect.top) / rect.height;
-  scheduleRender();
-});
+// 鼠标悬浮：显示当前位置海拔（拖动中心点时也会一起更新，不冲突）
 canvas.addEventListener('mousemove', (e) => {
   const rect = canvas.getBoundingClientRect();
   const fx = (e.clientX - rect.left) / rect.width;
   const fy = (e.clientY - rect.top) / rect.height;
   const p = collectParams();
   const logicalH = LOGICAL_W * (canvas.height / canvas.width);
-  const centerLogical = { x: center.fx * LOGICAL_W, y: center.fy * logicalH };
-  const h = heightAtLogical(fx * LOGICAL_W, fy * logicalH, centerLogical, p.peak, p.spread, p.noiseAmp, p.noiseScale);
+  const peaksLogical = p.peaks.map((pk) => ({ x: pk.fx * LOGICAL_W, y: pk.fy * logicalH, height: pk.height }));
+  const h = heightAtLogical(fx * LOGICAL_W, fy * logicalH, peaksLogical, p.spread, p.noiseAmp, p.noiseScale);
   tooltip.style.display = 'block';
   tooltip.style.left = (e.clientX - rect.left + 14) + 'px';
   tooltip.style.top = (e.clientY - rect.top + 10) + 'px';
@@ -871,7 +997,7 @@ canvas.addEventListener('mousemove', (e) => {
 });
 canvas.addEventListener('mouseleave', () => { tooltip.style.display = 'none'; });
 
-['peak','spread','noiseAmp','noiseScale','levels','lineWidth','indexInterval','fontSize',
+['spread','noiseAmp','noiseScale','levels','lineWidth','indexInterval','fontSize',
  'labelColor','followLineColor','labelStroke','peakShow','peakDotColor','peakLabelColor','peakFontSize',
  'bgColor','contourColor','indexColor']
   .forEach((id) => els[id].addEventListener('input', scheduleRender));
@@ -889,7 +1015,7 @@ function bindValDisplay(id) {
   input.addEventListener('input', update);
   update();
 }
-['peak','spread','noiseAmp','noiseScale','levels','lineWidth','indexInterval','fontSize','peakFontSize']
+['spread','noiseAmp','noiseScale','levels','lineWidth','indexInterval','fontSize','peakFontSize']
   .forEach(bindValDisplay);
 
 document.getElementById('exportBtn').addEventListener('click', () => {
@@ -906,7 +1032,7 @@ document.getElementById('exportBtn').addEventListener('click', () => {
     const off = document.createElement('canvas');
     off.width = w; off.height = h;
     const offCtx = off.getContext('2d');
-    drawScene(offCtx, w, h, collectParams());
+    drawScene(offCtx, w, h, collectParams()); // 注意：导出时不会调用 drawPeakMarkers，图片里不会有蓝紫色圆点标记
     const link = document.createElement('a');
     link.download = '等高线图.png';
     link.href = off.toDataURL('image/png');
@@ -923,6 +1049,7 @@ indexColorRow.style.display = els.unifyIndexColor.checked ? 'none' : 'flex';
 populateFontDropdown();
 updatePhysicalSize();
 resizePreviewCanvas();
+renderPeakList();
 scheduleRender();
 </script>
 
