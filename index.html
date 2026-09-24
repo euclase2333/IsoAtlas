@@ -12,6 +12,7 @@
     background: #f4f4f6;
     color: #222;
   }
+  /* 面板放在右边：.preview 排在前面，.panel 排在后面 */
   .app {
     display: flex;
     flex-wrap: wrap;
@@ -21,20 +22,32 @@
     width: 340px;
     padding: 20px 22px;
     background: #ffffff;
-    border-right: 1px solid #e2e2e6;
+    border-left: 1px solid #e2e2e6;
     max-height: 100vh;
     overflow-y: auto;
+    order: 2;
   }
+  .preview {
+    order: 1;
+    flex: 1; display: flex; align-items: center; justify-content: center; padding: 24px; position: relative;
+  }
+
   .panel h1 { font-size: 19px; margin: 0 0 4px; }
   .panel .hint { font-size: 12.5px; color: #777; margin-bottom: 16px; line-height: 1.5; }
 
-  /* ---- 分组区块 ---- */
+  /* ---- 可折叠分组区块 ---- */
   .section { margin-bottom: 8px; border-top: 1px solid #eee; padding-top: 12px; }
   .section:first-of-type { border-top: none; }
   .section-title {
     font-size: 13px; font-weight: 700; color: #2563eb;
     margin-bottom: 10px; letter-spacing: 1px; text-transform: uppercase;
+    cursor: pointer; user-select: none;
+    display: flex; align-items: center; justify-content: space-between;
   }
+  .section-title .chevron { transition: transform .18s; font-size: 11px; color: #94a3b8; }
+  .section-title.collapsed .chevron { transform: rotate(-90deg); }
+  .section-body { overflow: hidden; }
+  .section-body.hidden { display: none; }
 
   .field { margin-bottom: 14px; }
   .field label { display: block; font-size: 13px; margin-bottom: 5px; font-weight: 600; }
@@ -84,9 +97,6 @@
   #exportBtn:hover { background: #1d4ed8; }
   #exportBtn:disabled { background: #93a9d8; cursor: wait; }
 
-  .preview {
-    flex: 1; display: flex; align-items: center; justify-content: center; padding: 24px; position: relative;
-  }
   canvas {
     background: #050505; border: 1px solid #222; box-shadow: 0 2px 16px rgba(0,0,0,0.25);
     max-width: 100%; height: auto; cursor: crosshair;
@@ -101,144 +111,154 @@
 
 <div class="app">
 
-  <!-- ========== 左侧：参数面板（按功能分组） ========== -->
-  <div class="panel">
-    <h1>IsoAtlas</h1>
-    <p class="hint">
-      第二步：加入了颜色自定义、数字缺口标注、字体选择、自定义导出分辨率。
-      拖动滑块实时看效果，点击画布可移动山峰。
-    </p>
-
-    <!-- ---------------- 地形 ---------------- -->
-    <div class="section">
-      <div class="section-title">地形</div>
-      <div class="field">
-        <label>山峰高度 <span class="sub">peak</span></label>
-        <div class="row"><input id="peak" type="range" min="50" max="500" value="200" /><span class="val" id="peakVal">200</span></div>
-      </div>
-      <div class="field">
-        <label>山的宽度 <span class="sub">spread</span></label>
-        <div class="row"><input id="spread" type="range" min="60" max="400" value="180" /><span class="val" id="spreadVal">180</span></div>
-      </div>
-      <div class="field">
-        <label>地形自然扭曲 <span class="sub">noise amount</span></label>
-        <div class="row"><input id="noiseAmp" type="range" min="0" max="80" value="28" /><span class="val" id="noiseAmpVal">28</span></div>
-      </div>
-      <div class="field">
-        <label>噪声细节 <span class="sub">noise detail</span></label>
-        <div class="row"><input id="noiseScale" type="range" min="5" max="50" value="12" /><span class="val" id="noiseScaleVal">12</span></div>
-      </div>
-    </div>
-
-    <!-- ---------------- 等高线 ---------------- -->
-    <div class="section">
-      <div class="section-title">等高线</div>
-      <div class="field">
-        <label>层数 <span class="sub">levels</span></label>
-        <div class="row"><input id="levels" type="range" min="4" max="40" value="20" /><span class="val" id="levelsVal">20</span></div>
-      </div>
-      <div class="field">
-        <label>线条粗细 <span class="sub">line width</span></label>
-        <div class="row"><input id="lineWidth" type="range" min="0.5" max="3" step="0.1" value="1" /><span class="val" id="lineWidthVal">1</span></div>
-      </div>
-      <div class="field">
-        <label>计曲线间隔 <span class="sub">每隔几条加粗一条</span></label>
-        <div class="row"><input id="indexInterval" type="range" min="2" max="10" value="5" /><span class="val" id="indexIntervalVal">5</span></div>
-      </div>
-    </div>
-
-    <!-- ---------------- 标注 ---------------- -->
-    <div class="section">
-      <div class="section-title">标注（高度数字）</div>
-      <div class="field">
-        <label>字号 <span class="sub">6 ~ 200px</span></label>
-        <div class="row"><input id="fontSize" type="range" min="6" max="200" value="12" /><span class="val" id="fontSizeVal">12</span></div>
-      </div>
-      <div class="field">
-        <label>字体</label>
-        <select id="fontFamily"></select>
-        <div class="row" style="margin-top:8px;">
-          <input id="customFontInput" type="text" placeholder="或手动输入字体名，如 Source Han Sans" />
-          <button id="applyCustomFont" style="padding:6px 10px;border:1px solid #ddd;border-radius:6px;background:#fafafa;cursor:pointer;">应用</button>
-        </div>
-        <div id="fontPreviewBox">Aa 高度 900m</div>
-        <div id="fontWarning">该字体在本机不可用，已自动使用备用字体显示（不影响其他人电脑）。</div>
-      </div>
-      <div class="colorpair">
-        <input id="labelColor" type="color" value="#ffffff" />
-        <span>数字颜色</span>
-        <label class="checkline"><input id="followLineColor" type="checkbox" checked />跟随线条颜色</label>
-      </div>
-      <label class="checkline"><input id="labelStroke" type="checkbox" checked />数字描边（复杂背景更清晰）</label>
-    </div>
-
-    <!-- ---------------- 颜色 ---------------- -->
-    <div class="section">
-      <div class="section-title">颜色</div>
-      <div class="presets">
-        <button data-preset="dark">深色底白线</button>
-        <button data-preset="light">白底黑线</button>
-        <button data-preset="kraft">牛皮纸</button>
-        <button data-preset="ocean">蓝色海洋</button>
-      </div>
-      <div class="colorpair"><input id="bgColor" type="color" value="#0a0a0a" /><span>背景颜色</span></div>
-      <div class="colorpair"><input id="contourColor" type="color" value="#ffffff" /><span>普通等高线颜色</span></div>
-      <label class="checkline" style="margin-bottom:8px;"><input id="unifyIndexColor" type="checkbox" checked />计曲线使用相同颜色</label>
-      <div class="colorpair" id="indexColorRow"><input id="indexColor" type="color" value="#ffffff" /><span>计曲线颜色</span></div>
-    </div>
-
-    <!-- ---------------- 导出 ---------------- -->
-    <div class="section">
-      <div class="section-title">导出</div>
-      <div class="inline2">
-        <div class="field"><label>宽度 px</label><input id="outputWidth" type="number" min="100" max="10000" value="800" /></div>
-        <div class="field"><label>高度 px</label><input id="outputHeight" type="number" min="100" max="10000" value="800" /></div>
-      </div>
-      <label class="checkline"><input id="lockAspect" type="checkbox" checked />锁定宽高比（默认 1:1）</label>
-      <div class="field" style="margin-top:12px;">
-        <label>DPI <span class="sub">默认 72，最大 300</span></label>
-        <input id="dpiInput" type="number" min="72" max="300" value="72" />
-      </div>
-      <div id="physicalSize"></div>
-      <div id="previewNote"></div>
-      <button id="exportBtn">导出为 PNG 图片</button>
-      <div id="exportWarn">提示：尺寸超过约 4000×4000px 时，导出可能需要几秒到几十秒，浏览器会短暂无响应，这是正常现象，耐心等待即可。</div>
-    </div>
-  </div>
-
-  <!-- ========== 右侧：实时预览画布 ========== -->
+  <!-- ========== 预览画布（放在左边） ========== -->
   <div class="preview">
     <canvas id="canvas" width="800" height="800"></canvas>
     <div id="tooltip"></div>
   </div>
 
+  <!-- ========== 参数面板（放在右边，每组可折叠） ========== -->
+  <div class="panel">
+    <h1>IsoAtlas</h1>
+    <p class="hint">点击分组标题可以折叠/展开。拖动滑块实时看效果，点击画布可移动山峰。</p>
+
+    <!-- ---------------- 地形 ---------------- -->
+    <div class="section">
+      <div class="section-title" data-target="body-terrain">地形<span class="chevron">▾</span></div>
+      <div class="section-body" id="body-terrain">
+        <div class="field">
+          <label>山峰高度 <span class="sub">peak</span></label>
+          <div class="row"><input id="peak" type="range" min="50" max="500" value="200" /><span class="val" id="peakVal">200</span></div>
+        </div>
+        <div class="field">
+          <label>山的宽度 <span class="sub">spread</span></label>
+          <div class="row"><input id="spread" type="range" min="60" max="400" value="180" /><span class="val" id="spreadVal">180</span></div>
+        </div>
+        <div class="field">
+          <label>地形自然扭曲 <span class="sub">noise amount</span></label>
+          <div class="row"><input id="noiseAmp" type="range" min="0" max="80" value="28" /><span class="val" id="noiseAmpVal">28</span></div>
+        </div>
+        <div class="field">
+          <label>噪声细节 <span class="sub">noise detail</span></label>
+          <div class="row"><input id="noiseScale" type="range" min="5" max="50" value="12" /><span class="val" id="noiseScaleVal">12</span></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ---------------- 等高线 ---------------- -->
+    <div class="section">
+      <div class="section-title" data-target="body-contour">等高线<span class="chevron">▾</span></div>
+      <div class="section-body" id="body-contour">
+        <div class="field">
+          <label>层数 <span class="sub">levels</span></label>
+          <div class="row"><input id="levels" type="range" min="4" max="40" value="20" /><span class="val" id="levelsVal">20</span></div>
+        </div>
+        <div class="field">
+          <label>线条粗细 <span class="sub">line width</span></label>
+          <div class="row"><input id="lineWidth" type="range" min="0.5" max="3" step="0.1" value="1" /><span class="val" id="lineWidthVal">1</span></div>
+        </div>
+        <div class="field">
+          <label>计曲线间隔 <span class="sub">每隔几条加粗一条</span></label>
+          <div class="row"><input id="indexInterval" type="range" min="2" max="10" value="5" /><span class="val" id="indexIntervalVal">5</span></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ---------------- 标注 ---------------- -->
+    <div class="section">
+      <div class="section-title" data-target="body-label">标注（高度数字）<span class="chevron">▾</span></div>
+      <div class="section-body" id="body-label">
+        <div class="field">
+          <label>字号 <span class="sub">6 ~ 200px</span></label>
+          <div class="row"><input id="fontSize" type="range" min="6" max="200" value="12" /><span class="val" id="fontSizeVal">12</span></div>
+        </div>
+        <div class="field">
+          <label>字体 <span class="sub">默认 Arial，来自你上传的字体清单</span></label>
+          <select id="fontFamily"></select>
+          <div class="row" style="margin-top:8px;">
+            <input id="customFontInput" type="text" placeholder="或手动输入字体名，如 Source Han Sans" />
+            <button id="applyCustomFont" style="padding:6px 10px;border:1px solid #ddd;border-radius:6px;background:#fafafa;cursor:pointer;">应用</button>
+          </div>
+          <div id="fontPreviewBox">Aa 高度 900m</div>
+          <div id="fontWarning">该字体在本机不可用，已自动使用兜底字体显示（不影响其他人电脑）。</div>
+        </div>
+        <div class="colorpair">
+          <input id="labelColor" type="color" value="#ffffff" />
+          <span>数字颜色</span>
+          <label class="checkline"><input id="followLineColor" type="checkbox" checked />跟随线条颜色</label>
+        </div>
+        <label class="checkline"><input id="labelStroke" type="checkbox" checked />数字描边（复杂背景更清晰）</label>
+      </div>
+    </div>
+
+    <!-- ---------------- 山顶标记 ---------------- -->
+    <div class="section">
+      <div class="section-title" data-target="body-peak">山顶标记<span class="chevron">▾</span></div>
+      <div class="section-body" id="body-peak">
+        <label class="checkline" style="margin-bottom:10px;"><input id="peakShow" type="checkbox" checked />显示山顶红点 + 海拔标注</label>
+        <div class="colorpair"><input id="peakDotColor" type="color" value="#ef4444" /><span>圆点颜色</span></div>
+        <div class="colorpair"><input id="peakLabelColor" type="color" value="#ffffff" /><span>文字颜色</span></div>
+        <div class="field">
+          <label>文字字号 <span class="sub">字体跟随上方"标注"里选的字体</span></label>
+          <div class="row"><input id="peakFontSize" type="range" min="8" max="60" value="13" /><span class="val" id="peakFontSizeVal">13</span></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ---------------- 颜色 ---------------- -->
+    <div class="section">
+      <div class="section-title" data-target="body-color">颜色<span class="chevron">▾</span></div>
+      <div class="section-body" id="body-color">
+        <div class="presets">
+          <button data-preset="light">白底黑线</button>
+          <button data-preset="dark">黑底白线</button>
+          <button data-preset="terrain">地形图（绿底黄线）</button>
+          <button data-preset="kraft">牛皮纸</button>
+          <button data-preset="sky">蓝色天空（白底蓝线）</button>
+          <button data-preset="ocean">蓝色海洋（蓝底白线）</button>
+        </div>
+        <div class="colorpair"><input id="bgColor" type="color" value="#0a0a0a" /><span>背景颜色</span></div>
+        <div class="colorpair"><input id="contourColor" type="color" value="#ffffff" /><span>普通等高线颜色</span></div>
+        <label class="checkline" style="margin-bottom:8px;"><input id="unifyIndexColor" type="checkbox" checked />计曲线使用相同颜色</label>
+        <div class="colorpair" id="indexColorRow"><input id="indexColor" type="color" value="#ffffff" /><span>计曲线颜色</span></div>
+      </div>
+    </div>
+
+    <!-- ---------------- 导出 ---------------- -->
+    <div class="section">
+      <div class="section-title" data-target="body-export">导出<span class="chevron">▾</span></div>
+      <div class="section-body" id="body-export">
+        <div class="inline2">
+          <div class="field"><label>宽度 px</label><input id="outputWidth" type="number" min="100" max="10000" value="800" /></div>
+          <div class="field"><label>高度 px</label><input id="outputHeight" type="number" min="100" max="10000" value="800" /></div>
+        </div>
+        <label class="checkline"><input id="lockAspect" type="checkbox" checked />锁定宽高比（默认 1:1）</label>
+        <div class="field" style="margin-top:12px;">
+          <label>DPI <span class="sub">默认 72，最大 300</span></label>
+          <input id="dpiInput" type="number" min="72" max="300" value="72" />
+        </div>
+        <div id="physicalSize"></div>
+        <div id="previewNote"></div>
+        <button id="exportBtn">导出为 PNG 图片</button>
+        <div id="exportWarn">提示：尺寸超过约 4000×4000px 时，导出可能需要几秒到几十秒，浏览器会短暂无响应，这是正常现象，耐心等待即可。</div>
+      </div>
+    </div>
+
+  </div>
 </div>
 
 <script>
 /*
   ========================================================
-  这一版（第二步）新增的核心技术点说明：
-  ------------------------------------------------------
-  1.【预览分辨率 与 导出分辨率 分离】
-     以前画布是固定 800x800。现在你可以把导出尺寸设成很大（最大
-     10000x10000），但如果预览也用这么大的画布来实时重画，
-     拖动滑块会卡到几乎不能用。
-     所以做法是：地形计算永远在一个"逻辑坐标空间"里进行
-     （固定宽度 LOGICAL_W = 800 个逻辑单位，高度按输出的宽高比换算），
-     实际画到屏幕上时，用 ctx.scale() 把这套逻辑坐标"缩放"到
-     当前画布的真实像素大小。
-     预览时画布像素被限制在 900px 以内（快、跟手），
-     点"导出"时才会真正用一个像素级别等于你设置尺寸的画布重新画一遍
-     （慢一点，但只在导出那一下发生）。
-
-  2.【等高线路径拼接 Path Chaining】
-     上一版画等高线时，marching squares 算出来的是一堆互不相干的
-     短线段，没法在中间"留白"。这一版把这些线段按端点是否重合
-     拼接成一条条完整的折线（一个山头的一圈等高线通常会拼成一个
-     闭合的环）。有了完整的折线后，才能算出：
-       - 这条线有多长（太短就不标数字）
-       - 沿着线走到多远的位置（用来放数字、找平缓的地方）
-       - 在数字两侧留出缺口，只画缺口以外的部分
+  这一版相对上一版的调整（都是细节打磨，没有动底层算法）：
+  1. 面板挪到右边：靠 CSS flex 的 order 属性实现，.preview 排 order:1，
+     .panel 排 order:2，画布自然就在左边、面板在右边了。
+  2. 每个分组可以折叠：点标题就是切换 .section-body 的 display。
+  3. 山顶的红点/文字变成可选项，而且颜色、字号都能单独调。
+  4. 字体检测名单换成了你电脑上实际安装的那份列表，默认选 Arial；
+     真正画到 canvas 上时，字体串会带一串"万一 Arial 也没有"的
+     兜底字体（Helvetica Neue → 苹方 → 微软雅黑 → 黑体 → 系统默认无衬线），
+     这样即使打开网页的人电脑上什么都没装，也不会变成空白或乱码字体。
   ========================================================
 */
 
@@ -246,17 +266,24 @@ const canvas = document.getElementById('canvas');
 const ctx = canvas.getContext('2d');
 const tooltip = document.getElementById('tooltip');
 
-const LOGICAL_W = 800;          // 固定的逻辑坐标宽度（不随导出尺寸变化）
-const PREVIEW_MAX = 900;        // 预览画布内部像素上限，保证拖动滑块流畅
+const LOGICAL_W = 800;
+const PREVIEW_MAX = 900;
 
-// 山峰中心点：用"占画布宽/高的比例"存储，这样切换导出尺寸/比例时位置不会跑偏
 let center = { fx: 0.5, fy: 0.5 };
-let currentFontFamily = 'monospace';
+let currentFontFamily = 'Arial';
+
+// 字体兜底链：选的字体如果访问者电脑上没有，会依次往后退
+const FALLBACK_STACK = ['Arial', 'Helvetica Neue', 'PingFang SC', 'Microsoft YaHei', 'SimHei', 'sans-serif'];
+function fontStack(family) {
+  const rest = FALLBACK_STACK.filter((f) => f !== family).map((f) => (f === 'sans-serif' ? f : `"${f}"`));
+  return `"${family}", ${rest.join(', ')}`;
+}
 
 // ---------- 拿到控件 ----------
 const els = {};
 ['peak','spread','noiseAmp','noiseScale','levels','lineWidth','indexInterval',
  'fontSize','labelColor','followLineColor','labelStroke',
+ 'peakShow','peakDotColor','peakLabelColor','peakFontSize',
  'bgColor','contourColor','unifyIndexColor','indexColor',
  'outputWidth','outputHeight','lockAspect','dpiInput'].forEach(id => els[id] = document.getElementById(id));
 
@@ -268,8 +295,17 @@ const indexColorRow = document.getElementById('indexColorRow');
 const physicalSizeEl = document.getElementById('physicalSize');
 const previewNoteEl = document.getElementById('previewNote');
 
+// ---------- 分组折叠 ----------
+document.querySelectorAll('.section-title').forEach((title) => {
+  title.addEventListener('click', () => {
+    const body = document.getElementById(title.dataset.target);
+    body.classList.toggle('hidden');
+    title.classList.toggle('collapsed');
+  });
+});
+
 // ================================================================
-// 噪声函数（同第一步，值噪声，效果类似 Perlin）
+// 噪声函数（值噪声，效果类似 Perlin）
 // ================================================================
 function hash(x, y) {
   const s = Math.sin(x * 127.1 + y * 311.7) * 43758.5453123;
@@ -286,8 +322,6 @@ function noise2D(x, y) {
   const nx1 = n01 + u * (n11 - n01);
   return nx0 + v * (nx1 - nx0);
 }
-
-// 某一点的地形高度（逻辑坐标系里计算）
 function heightAtLogical(x, y, centerLogical, peak, spread, noiseAmp, noiseScale) {
   const warpX = (noise2D(x * noiseScale, y * noiseScale) - 0.5) * noiseAmp;
   const warpY = (noise2D(x * noiseScale + 50, y * noiseScale + 50) - 0.5) * noiseAmp;
@@ -298,12 +332,11 @@ function heightAtLogical(x, y, centerLogical, peak, spread, noiseAmp, noiseScale
 }
 
 // ================================================================
-// 网格 + Marching Squares（同第一步原理，网格密度可变）
+// 网格 + Marching Squares
 // ================================================================
 function clampGridCount(maxPx) {
   return Math.max(140, Math.min(480, Math.round(maxPx / 25)));
 }
-
 function buildHeightGrid(gridCount, logicalW, logicalH, centerLogical, peak, spread, noiseAmp, noiseScale) {
   const cellSize = logicalW / gridCount;
   const rows = Math.round(logicalH / cellSize);
@@ -321,13 +354,11 @@ function buildHeightGrid(gridCount, logicalW, logicalH, centerLogical, peak, spr
   }
   return { grid, cellSize, rows, cols: gridCount, maxPt };
 }
-
 function lerpPoint(p0, p1, v0, v1, threshold) {
   if (v1 === v0) return p0;
   const t = (threshold - v0) / (v1 - v0);
   return [p0[0] + (p1[0] - p0[0]) * t, p0[1] + (p1[1] - p0[1]) * t];
 }
-
 function traceContour(grid, cols, rows, cellSize, threshold) {
   const segments = [];
   for (let j = 0; j < rows; j++) {
@@ -339,14 +370,12 @@ function traceContour(grid, cols, rows, cellSize, threshold) {
       if (c > threshold) caseIdx |= 2;
       if (d > threshold) caseIdx |= 1;
       if (caseIdx === 0 || caseIdx === 15) continue;
-
       const x0 = i * cellSize, x1 = (i + 1) * cellSize;
       const y0 = j * cellSize, y1 = (j + 1) * cellSize;
       const top = lerpPoint([x0, y0], [x1, y0], a, b, threshold);
       const right = lerpPoint([x1, y0], [x1, y1], b, c, threshold);
       const bottom = lerpPoint([x0, y1], [x1, y1], d, c, threshold);
       const left = lerpPoint([x0, y0], [x0, y1], a, d, threshold);
-
       switch (caseIdx) {
         case 1: segments.push([left, bottom]); break;
         case 2: segments.push([bottom, right]); break;
@@ -369,7 +398,7 @@ function traceContour(grid, cols, rows, cellSize, threshold) {
 }
 
 // ================================================================
-// 新增：把零散线段拼接成完整折线（供留白标注使用）
+// 折线拼接 + 缺口留白标注
 // ================================================================
 function chainSegments(segments) {
   const key = (p) => Math.round(p[0] * 100) + ',' + Math.round(p[1] * 100);
@@ -381,15 +410,12 @@ function chainSegments(segments) {
       map.get(k).push({ idx, end });
     });
   });
-
   const visited = new Array(segments.length).fill(false);
   const paths = [];
-
   for (let i = 0; i < segments.length; i++) {
     if (visited[i]) continue;
     visited[i] = true;
     const path = [segments[i][0], segments[i][1]];
-
     let extended = true;
     while (extended) {
       extended = false;
@@ -422,16 +448,12 @@ function chainSegments(segments) {
   }
   return paths;
 }
-
 function dist(a, b) { return Math.hypot(a[0] - b[0], a[1] - b[1]); }
-
-// 沿一条折线，找到 1~2 个"比较平缓"的位置放数字，并算出要留白的区间
 function layoutLabelsForPath(ctx, path, text, padding) {
   const n = path.length;
   const cum = [0];
   for (let i = 1; i < n; i++) cum.push(cum[i - 1] + dist(path[i - 1], path[i]));
   const totalLen = cum[n - 1] || 0;
-
   function pointAt(s) {
     s = Math.max(0, Math.min(totalLen, s));
     let k = 1;
@@ -444,19 +466,10 @@ function layoutLabelsForPath(ctx, path, text, padding) {
       angle: Math.atan2(p1[1] - p0[1], p1[0] - p0[0])
     };
   }
-
-  if (n < 3 || totalLen < padding * 3) {
-    // 太短，放不下数字：整条线不留白、不标注
-    return { keepRanges: [[0, totalLen]], labels: [], cum, pointAt };
-  }
-
+  if (n < 3 || totalLen < padding * 3) return { keepRanges: [[0, totalLen]], labels: [], cum, pointAt };
   const textW = ctx.measureText(text).width;
   const gapHalf = textW / 2 + padding;
-
-  if (totalLen < gapHalf * 2 + padding) {
-    return { keepRanges: [[0, totalLen]], labels: [], cum, pointAt };
-  }
-
+  if (totalLen < gapHalf * 2 + padding) return { keepRanges: [[0, totalLen]], labels: [], cum, pointAt };
   function curviness(s) {
     const a = pointAt(Math.max(0, s - gapHalf * 0.8));
     const b = pointAt(Math.min(totalLen, s + gapHalf * 0.8));
@@ -464,12 +477,10 @@ function layoutLabelsForPath(ctx, path, text, padding) {
     if (d > Math.PI) d = 2 * Math.PI - d;
     return d;
   }
-
   const targets = totalLen > gapHalf * 6 ? [0.28, 0.72] : [0.5];
   const searchRadius = Math.max(gapHalf, Math.min(totalLen * 0.18, gapHalf * 4));
   const gaps = [];
   const labels = [];
-
   targets.forEach((frac) => {
     const centerS = frac * totalLen;
     let bestS = null, bestScore = Infinity;
@@ -489,7 +500,6 @@ function layoutLabelsForPath(ctx, path, text, padding) {
     labels.push({ x: hit.p[0], y: hit.p[1], angle, text });
     gaps.push([bestS - gapHalf, bestS + gapHalf]);
   });
-
   gaps.sort((a, b) => a[0] - b[0]);
   const keepRanges = [];
   let cursor = 0;
@@ -498,10 +508,8 @@ function layoutLabelsForPath(ctx, path, text, padding) {
     cursor = Math.max(cursor, g1);
   });
   if (cursor < totalLen) keepRanges.push([cursor, totalLen]);
-
   return { keepRanges, labels, cum, pointAt };
 }
-
 function buildSubPolyline(path, cum, s0, s1, pointAt) {
   const pts = [pointAt(s0).p];
   for (let i = 0; i < path.length; i++) {
@@ -512,7 +520,7 @@ function buildSubPolyline(path, cum, s0, s1, pointAt) {
 }
 
 // ================================================================
-// 颜色工具 & 预设
+// 颜色工具 & 预设（顺序：白底黑线 / 黑底白线 / 地形图 / 牛皮纸 / 蓝色天空 / 蓝色海洋）
 // ================================================================
 function hexToRgba(hex, alpha) {
   const h = hex.replace('#', '');
@@ -521,14 +529,14 @@ function hexToRgba(hex, alpha) {
   const b = parseInt(h.substring(4, 6), 16);
   return `rgba(${r},${g},${b},${alpha})`;
 }
-
 const PRESETS = {
-  dark:  { bg: '#0a0a0a', contour: '#ffffff', index: '#ffffff', label: '#ffffff' },
-  light: { bg: '#ffffff', contour: '#1a1a1a', index: '#000000', label: '#000000' },
-  kraft: { bg: '#d8c39c', contour: '#5b4324', index: '#3a2a14', label: '#3a2a14' },
-  ocean: { bg: '#062a4a', contour: '#7fd4ff', index: '#ffffff', label: '#eaffff' },
+  light:   { bg: '#ffffff', contour: '#1a1a1a', index: '#000000', label: '#000000' },
+  dark:    { bg: '#0a0a0a', contour: '#ffffff', index: '#ffffff', label: '#ffffff' },
+  terrain: { bg: '#2f6b3f', contour: '#f6c945', index: '#fff2b0', label: '#fff2b0' },
+  kraft:   { bg: '#d8c39c', contour: '#5b4324', index: '#3a2a14', label: '#3a2a14' },
+  sky:     { bg: '#ffffff', contour: '#1d6fe0', index: '#0b3f8a', label: '#0b3f8a' },
+  ocean:   { bg: '#08355c', contour: '#ffffff', index: '#ffffff', label: '#ffffff' },
 };
-
 document.querySelectorAll('.presets button').forEach((btn) => {
   btn.addEventListener('click', () => {
     const p = PRESETS[btn.dataset.preset];
@@ -541,14 +549,83 @@ document.querySelectorAll('.presets button').forEach((btn) => {
 });
 
 // ================================================================
-// 字体检测（经典技巧：用几个保底字体做基准宽度对比）
+// 字体检测：名单直接取自你电脑上安装的字体列表，默认选 Arial
 // ================================================================
 const FONT_CANDIDATES = [
-  'Arial','Helvetica','Helvetica Neue','Times New Roman','Georgia','Courier New','Verdana',
-  'Tahoma','Trebuchet MS','Impact','Segoe UI','Roboto','Calibri','Cambria','Consolas','Menlo','Monaco',
-  'PingFang SC','PingFang TC','Microsoft YaHei','Microsoft JhengHei','SimHei','SimSun','STHeiti',
-  'STSong','STKaiti','Noto Sans CJK SC','Noto Serif CJK SC','Source Han Sans CN','Source Han Serif CN',
-  'Hiragino Sans GB','Kaiti SC','FangSong','YouYuan'
+  '3603 Formation','accent normal','Ade','Agency FB','ALASKA','Aleo','Amelina Script','Ammonite',
+  'areminiscentsmile','Arial','Arial Black','Arial Narrow','AvantGarde CE','AvantGarde LT Book',
+  'AvantGarde LT CondBook','AvantGarde LT CondMedium','AvantGarde LT ExtraLight','AvantGarde LT Medium',
+  'Bahnschrift','Bahnschrift Condensed','Bahnschrift Light','Bahnschrift Light Condensed',
+  'Bahnschrift Light SemiCondensed','Bahnschrift SemiBold','Bahnschrift SemiBold Condensed',
+  'Bahnschrift SemiBold SemiConden','Bahnschrift SemiCondensed','Bahnschrift SemiLight',
+  'Bahnschrift SemiLight Condensed','Bahnschrift SemiLight SemiConde','Barlow','Barlow ExtraLight',
+  'Barlow Light','Barlow Medium','Barlow Semi Condensed','Barlow Semi Condensed ExtraBold',
+  'Barlow SemiBold','Barlow Thin','Bauhaus 93','Beatrick Commercial Used','Bebas','Bebas Kai',
+  'Bebas Neue','Book Antiqua','Bookman Old Style','Bookshelf Symbol 7','Britannic Bold','Broadway',
+  'Brush Script MT','Brutel','Brutel Black','Brutel Extra Bold','Brutel Extra Light','Brutel Light',
+  'Brutel Medium','Brutel Semi Bold','Brutel Thin','Bygonest Typewriter','Calibri','Calibri Light',
+  'Calypso','Cambria','Cambria Math','Candara','Candara Light','Caprasimo','Castellar','Centaur',
+  'Century','Century Gothic','Century Schoolbook','Chromate','Coco','Coco Cond','Colonna MT',
+  'Comic Sans MS','Compania DEMO','Consolas','Constantia','Cooper Black','Copperplate Gothic Bold',
+  'Copperplate Gothic Light','Corbel','Corbel Light','Courier New','Cyrene','Dubai','Dubai Light',
+  'Dubai Medium','Dune Rise','Ebrima','Edwardian Script ITC','Elephant','Engravers MT','Evolventa',
+  'Exmouth','Fegan','Felix Titling','Footlight MT Light','Forte','Franklin Gothic Book',
+  'Franklin Gothic Demi','Franklin Gothic Demi Cond','Franklin Gothic Heavy','Franklin Gothic Medium',
+  'Franklin Gothic Medium Cond','FreeSerif','Freestyle Script','Gabriola','Gadugi','Garamond',
+  'gatasosyo','Gatha Script','Genkaimincho','GenWanMin JP EL','GenWanMin JP L','GenWanMin JP Light',
+  'GenWanMin JP M','GenWanMin JP Medium','GenWanMin JP R','GenWanMin JP Regular','GenWanMin JP SB',
+  'GenWanMin JP SemiBold','Georgia','Gill Sans Ultra Bold','Gill Sans Ultra Bold Condensed',
+  'Gloucester MT Extra Condensed','Goudy Old Style','Goudy Stout','Great Vibes','Haettenschweiler',
+  'Halo','Halo Outline','Hashira Mt','Hell Deco','Hello Paris','Hello Paris Bold','Hello Paris Medium',
+  'Hello Paris Script','Henri Didot','High Tower Text','HoloLens MDL2 Assets','Impact',
+  'Imprint MT Shadow','Informal Roman','Ink Free','Intransigencia','Involve','Involve Medium',
+  'Involve SemiBold','Javanese Text',"jess's dead",'Jokerman','Juice ITC','KouzanBrushFont',
+  'Kristen ITC','Kudry Weird Headline','Kunstler Script','Leelawadee','Leelawadee UI',
+  'Leelawadee UI Semilight','Lucida Bright','Lucida Calligraphy','Lucida Console','Lucida Fax',
+  'Lucida Handwriting','Lucida Sans','Lucida Sans Typewriter','Lucida Sans Unicode','Magneto',
+  'Maiandra GD','Malgun Gothic','Malgun Gothic Semilight','Mariyam','Marlett','Marske',
+  'Matura MT Script Capitals','Microsoft Himalaya','Microsoft JhengHei UI',
+  'Microsoft JhengHei UI Light','Microsoft New Tai Lue','Microsoft PhagsPa','Microsoft Sans Serif',
+  'Microsoft Tai Le','Microsoft Uighur','Microsoft YaHei UI','Microsoft YaHei UI Light',
+  'Microsoft Yi Baiti','Migha','Migha Black','Migha Black SemExp','Migha Light','Migha Med',
+  'Migha Thin','Mistral','Modern No. 20','Modernia','Mongolian Baiti','Monotype Corsiva',
+  'Morganite','MS Gothic','MS Outlook','MS PGothic','MS Reference Sans Serif',
+  'MS Reference Specialty','MS UI Gothic','MT Extra','MV Boli','Myanmar Text','NewYork',
+  'Niagara Engraved','Niagara Solid','Nirmala UI','Nirmala UI Semilight','Norse','Noto Sans SC',
+  'Noto Sans SC Black','Noto Sans SC DemiLight','Noto Sans SC Light','Noto Sans SC Medium',
+  'Noto Sans SC Thin','OCR A Extended','Old English Text MT','Onyx','OPPOSans B','OPPOSans H',
+  'OPPOSans L','OPPOSans M','OPPOSans R','OPTIPosterBodoni-Compr','Otto Attac Type',
+  'Palace Script MT','Palatino Linotype','Papyrus','Parchment','Parisienne','Perpetua Titling MT',
+  'Philips Dutcher','Playbill','Playfair Display','Playfair Display Black',
+  'Playfair Display ExtraBold','Playfair Display Medium','Playfair Display SemiBold','Poor Richard',
+  'Pristina','PROJECT SPACE','Quaaykop','Quantum Lemon Normal','Quinn','Rage Italic','Raleway',
+  'Rockwell','Rockwell Condensed','Rockwell Extra Bold','Sanchez','Sanchez Italic',
+  'Segoe MDL2 Assets','Segoe Print','Segoe Script','Segoe UI','Segoe UI Black','Segoe UI Emoji',
+  'Segoe UI Historic','Segoe UI Light','Segoe UI Semibold','Segoe UI Semilight','Segoe UI Symbol',
+  'Showcard Gothic','SimSun-ExtB','SimSun-ExtG','SISTEMAS FONT BT','Sitka Banner','Sitka Display',
+  'Sitka Heading','Sitka Small','Sitka Subheading','Sitka Text','Snap ITC','SoukouMincho','Stencil',
+  'Sylfaen','Symbol','Tahoma','Tamanegi Kaisho Geki FreeVer 7','Times New Roman','Trebuchet MS',
+  'Tw Cen MT','Tw Cen MT Condensed','Tw Cen MT Condensed Extra Bold','UnifrakturMaguntia',
+  'Urbanist','Urbanist Black','Urbanist ExtraBold','Urbanist ExtraLight','Urbanist Light',
+  'Urbanist Medium','Urbanist SemiBold','Urbanist Thin','Verdana','Violeta','Waffold','Webdings',
+  'Wide Latin','Wingdings','Wingdings 2','Wingdings 3','YAKITORI','Yu Gothic','Yu Gothic Light',
+  'Yu Gothic Medium','Yu Gothic UI','Yu Gothic UI Light','Yu Gothic UI Semibold',
+  'Yu Gothic UI Semilight','Yuji Syuku','zai Remington Deluxe Typewriter','ZWAdobeF',
+  '一点明体','一点明体CP','一点明体异体','一点明体异体CP','仓耳渔阳体 W01','仓耳渔阳体 W02',
+  '仓耳渔阳体 W03','仓耳渔阳体 W04','仓耳渔阳体 W05','仿宋','华文中宋','华文仿宋','华文宋体',
+  '华文彩云','华文新魏','华文楷体','华文琥珀','华文细黑','华文行楷','华文隶书',
+  '字体传奇南安体-免费商用','字心坊李林哥特体简体中文','字酷堂清楷体','宋体','幼圆',
+  '庞门正道标题体','微軟正黑體','微軟正黑體 Light','微软雅黑','微软雅黑 Light','思源宋体 CN',
+  '思源宋体 CN ExtraLight','思源宋体 CN Heavy','思源宋体 CN Light','思源宋体 CN Medium',
+  '思源宋体 CN SemiBold','思源黑体 CN Bold','思源黑体 CN ExtraLight','思源黑体 CN Heavy',
+  '思源黑体 CN Light','思源黑体 CN Medium','思源黑体 CN Normal','思源黑体 CN Regular',
+  '思源黑體 TW','思源黑體 TW ExtraLight','思源黑體 TW Heavy','思源黑體 TW Light',
+  '思源黑體 TW Medium','思源黑體 TW Normal','文鼎ＰＬ简报宋','新宋体','新細明體-ExtB',
+  '方正书宋简体','方正书宋繁体','方正仿宋简体','方正仿宋繁体','方正兰亭黑_GBK','方正姚体',
+  '方正楷体简体','方正楷体繁体','方正舒体','方正黑体简体','方正黑体繁体','未来荧黑 Compressed',
+  '楷体','汇文筑地五号明朝体','源雲明體 EL','源雲明體 L','源雲明體 M','源雲明體 R',
+  '源雲明體 SB','站酷高端黑','等线','等线 Light','細明體-ExtB','細明體_HKSCS-ExtB',
+  '锐字真言体免费商用','隶书','香港民間字集 傳承字形版 (基本區-僅正字形)','黑体'
 ];
 
 function makeFontDetector() {
@@ -569,23 +646,22 @@ function makeFontDetector() {
 const isFontAvailable = makeFontDetector();
 
 function populateFontDropdown() {
-  const generic = ['monospace', 'sans-serif', 'serif'];
+  const always = FALLBACK_STACK.concat(['serif', 'monospace']);
   const detected = FONT_CANDIDATES.filter(isFontAvailable);
-  const all = generic.concat(detected);
+  const seen = new Set();
+  const all = [];
+  always.concat(detected).forEach((f) => { if (!seen.has(f)) { seen.add(f); all.push(f); } });
   fontFamilySelect.innerHTML = '';
   all.forEach((f) => {
     const opt = document.createElement('option');
     opt.value = f; opt.textContent = f;
     fontFamilySelect.appendChild(opt);
   });
-  fontFamilySelect.value = 'monospace';
-  currentFontFamily = 'monospace';
+  fontFamilySelect.value = 'Arial';
+  currentFontFamily = 'Arial';
   updateFontPreview();
 }
-
-function updateFontPreview() {
-  fontPreviewBox.style.fontFamily = `"${currentFontFamily}", monospace`;
-}
+function updateFontPreview() { fontPreviewBox.style.fontFamily = fontStack(currentFontFamily); }
 
 fontFamilySelect.addEventListener('change', () => {
   currentFontFamily = fontFamilySelect.value;
@@ -593,12 +669,10 @@ fontFamilySelect.addEventListener('change', () => {
   updateFontPreview();
   scheduleRender();
 });
-
 document.getElementById('applyCustomFont').addEventListener('click', () => {
   const name = customFontInput.value.trim();
   if (!name) return;
   const available = isFontAvailable(name);
-  // 不管本机是否检测到，都先把它加入下拉框、切换过去
   let opt = Array.from(fontFamilySelect.options).find((o) => o.value === name);
   if (!opt) {
     opt = document.createElement('option');
@@ -615,8 +689,7 @@ document.getElementById('applyCustomFont').addEventListener('click', () => {
 // ================================================================
 // 导出尺寸 / DPI / 锁定宽高比
 // ================================================================
-let aspectRatio = 1; // 宽 / 高
-
+let aspectRatio = 1;
 function updatePhysicalSize() {
   const w = Number(els.outputWidth.value);
   const h = Number(els.outputHeight.value);
@@ -624,68 +697,52 @@ function updatePhysicalSize() {
   const inW = (w / dpi).toFixed(2), inH = (h / dpi).toFixed(2);
   const cmW = (w / dpi * 2.54).toFixed(1), cmH = (h / dpi * 2.54).toFixed(1);
   physicalSizeEl.textContent = `导出尺寸 ${w}×${h}px ≈ 打印 ${cmW}×${cmH} cm（${inW}×${inH} in）@ ${dpi} DPI`;
-
   if (w > PREVIEW_MAX || h > PREVIEW_MAX) {
-    previewNoteEl.textContent = `预览已自动缩小显示（内部渲染约 ${getPreviewSize(w, h).w}×${getPreviewSize(w, h).h}px），导出时仍按 ${w}×${h}px 原始分辨率生成，不影响清晰度。`;
+    const sz = getPreviewSize(w, h);
+    previewNoteEl.textContent = `预览已自动缩小显示（内部渲染约 ${sz.w}×${sz.h}px），导出时仍按 ${w}×${h}px 原始分辨率生成。`;
   } else {
     previewNoteEl.textContent = '';
   }
 }
-
 els.outputWidth.addEventListener('input', () => {
   if (els.lockAspect.checked) els.outputHeight.value = Math.round(Number(els.outputWidth.value) / aspectRatio);
-  updatePhysicalSize();
-  resizePreviewCanvas();
-  scheduleRender();
+  updatePhysicalSize(); resizePreviewCanvas(); scheduleRender();
 });
 els.outputHeight.addEventListener('input', () => {
   if (els.lockAspect.checked) els.outputWidth.value = Math.round(Number(els.outputHeight.value) * aspectRatio);
-  updatePhysicalSize();
-  resizePreviewCanvas();
-  scheduleRender();
+  updatePhysicalSize(); resizePreviewCanvas(); scheduleRender();
 });
 els.lockAspect.addEventListener('change', () => {
-  if (els.lockAspect.checked) {
-    aspectRatio = Number(els.outputWidth.value) / Number(els.outputHeight.value);
-  }
+  if (els.lockAspect.checked) aspectRatio = Number(els.outputWidth.value) / Number(els.outputHeight.value);
 });
 els.dpiInput.addEventListener('input', updatePhysicalSize);
-
 function getPreviewSize(w, h) {
   if (w <= PREVIEW_MAX && h <= PREVIEW_MAX) return { w, h };
   const scale = Math.min(PREVIEW_MAX / w, PREVIEW_MAX / h);
   return { w: Math.max(1, Math.round(w * scale)), h: Math.max(1, Math.round(h * scale)) };
 }
-
 function resizePreviewCanvas() {
   const w = Number(els.outputWidth.value), h = Number(els.outputHeight.value);
   const size = getPreviewSize(w, h);
-  canvas.width = size.w;
-  canvas.height = size.h;
+  canvas.width = size.w; canvas.height = size.h;
 }
 
 // ================================================================
-// 主渲染函数：ctx / 像素宽 / 像素高 都是参数，
-// 这样"预览画布"和"导出用的离屏画布"可以共用同一套绘制逻辑
+// 主渲染
 // ================================================================
 function collectParams() {
   return {
-    peak: Number(els.peak.value),
-    spread: Number(els.spread.value),
-    noiseAmp: Number(els.noiseAmp.value),
-    noiseScale: Number(els.noiseScale.value) / 1000,
-    levels: Number(els.levels.value),
-    lineWidth: Number(els.lineWidth.value),
+    peak: Number(els.peak.value), spread: Number(els.spread.value),
+    noiseAmp: Number(els.noiseAmp.value), noiseScale: Number(els.noiseScale.value) / 1000,
+    levels: Number(els.levels.value), lineWidth: Number(els.lineWidth.value),
     indexInterval: Number(els.indexInterval.value),
-    fontSize: Number(els.fontSize.value),
-    fontFamily: currentFontFamily,
-    labelColor: els.labelColor.value,
-    followLineColor: els.followLineColor.checked,
+    fontSize: Number(els.fontSize.value), fontFamily: currentFontFamily,
+    labelColor: els.labelColor.value, followLineColor: els.followLineColor.checked,
     labelStroke: els.labelStroke.checked,
-    bgColor: els.bgColor.value,
-    contourColor: els.contourColor.value,
-    unifyIndexColor: els.unifyIndexColor.checked,
-    indexColor: els.indexColor.value,
+    peakShow: els.peakShow.checked, peakDotColor: els.peakDotColor.value,
+    peakLabelColor: els.peakLabelColor.value, peakFontSize: Number(els.peakFontSize.value),
+    bgColor: els.bgColor.value, contourColor: els.contourColor.value,
+    unifyIndexColor: els.unifyIndexColor.checked, indexColor: els.indexColor.value,
   };
 }
 
@@ -715,7 +772,6 @@ function drawScene(targetCtx, pxWidth, pxHeight, p) {
   for (let i = 1; i <= p.levels; i++) {
     const threshold = (p.peak * i) / (p.levels + 1);
     if (threshold <= 0 || threshold >= p.peak) continue;
-
     const isIndex = i % p.indexInterval === 0;
     const segments = traceContour(grid, cols, rows, cellSize, threshold);
     if (!segments.length) continue;
@@ -725,10 +781,9 @@ function drawScene(targetCtx, pxWidth, pxHeight, p) {
     const alpha = isIndex ? 1 : 0.42;
     targetCtx.lineWidth = isIndex ? p.lineWidth * 2.4 : p.lineWidth;
     targetCtx.strokeStyle = hexToRgba(strokeColor, alpha);
-    targetCtx.font = `${isIndex ? 'bold ' : ''}${p.fontSize}px "${p.fontFamily}", monospace`;
+    targetCtx.font = `${isIndex ? 'bold ' : ''}${p.fontSize}px ` + fontStack(p.fontFamily);
 
     const text = `${Math.round(threshold)}m`;
-
     paths.forEach((path) => {
       const layout = layoutLabelsForPath(targetCtx, path, text, padding);
       layout.keepRanges.forEach(([s0, s1]) => {
@@ -742,12 +797,11 @@ function drawScene(targetCtx, pxWidth, pxHeight, p) {
     });
   }
 
-  // ---- 标注文字统一最后画，压在所有线的上面 ----
   labelQueue.forEach((l) => {
     targetCtx.save();
     targetCtx.translate(l.x, l.y);
     targetCtx.rotate(l.angle);
-    targetCtx.font = `${l.isIndex ? 'bold ' : ''}${p.fontSize}px "${p.fontFamily}", monospace`;
+    targetCtx.font = `${l.isIndex ? 'bold ' : ''}${p.fontSize}px ` + fontStack(p.fontFamily);
     targetCtx.textAlign = 'center';
     targetCtx.textBaseline = 'middle';
     const fillColor = p.followLineColor ? l.strokeColor : p.labelColor;
@@ -761,30 +815,31 @@ function drawScene(targetCtx, pxWidth, pxHeight, p) {
     targetCtx.restore();
   });
 
-  // ---- 山顶标记：红点 + Elev 文字 ----
-  targetCtx.beginPath();
-  targetCtx.arc(maxPt[0], maxPt[1], 5, 0, Math.PI * 2);
-  targetCtx.fillStyle = '#ef4444';
-  targetCtx.fill();
-  targetCtx.strokeStyle = '#ffffff';
-  targetCtx.lineWidth = 1.5;
-  targetCtx.stroke();
+  // ---- 山顶标记：可整体隐藏；圆点/文字颜色、字号可调；字体跟随全局选择 ----
+  if (p.peakShow) {
+    targetCtx.beginPath();
+    targetCtx.arc(maxPt[0], maxPt[1], 5, 0, Math.PI * 2);
+    targetCtx.fillStyle = p.peakDotColor;
+    targetCtx.fill();
+    targetCtx.strokeStyle = '#ffffff';
+    targetCtx.lineWidth = 1.5;
+    targetCtx.stroke();
 
-  targetCtx.font = 'bold 13px monospace';
-  targetCtx.textAlign = 'left';
-  targetCtx.textBaseline = 'middle';
-  const label = `Elev: ${Math.round(p.peak)}m`;
-  const tx = maxPt[0] + 10, ty = maxPt[1];
-  const tw = targetCtx.measureText(label).width;
-  targetCtx.fillStyle = 'rgba(0,0,0,0.7)';
-  targetCtx.fillRect(tx - 4, ty - 10, tw + 8, 20);
-  targetCtx.fillStyle = '#ffffff';
-  targetCtx.fillText(label, tx, ty);
+    targetCtx.font = `bold ${p.peakFontSize}px ` + fontStack(p.fontFamily);
+    targetCtx.textAlign = 'left';
+    targetCtx.textBaseline = 'middle';
+    const label = `Elev: ${Math.round(p.peak)}m`;
+    const tx = maxPt[0] + 10, ty = maxPt[1];
+    const tw = targetCtx.measureText(label).width;
+    targetCtx.fillStyle = 'rgba(0,0,0,0.7)';
+    targetCtx.fillRect(tx - 4, ty - p.peakFontSize * 0.75, tw + 8, p.peakFontSize * 1.5);
+    targetCtx.fillStyle = p.peakLabelColor;
+    targetCtx.fillText(label, tx, ty);
+  }
 
   targetCtx.restore();
 }
 
-// ---------- 预览渲染（带 requestAnimationFrame 防抖） ----------
 let renderScheduled = false;
 function scheduleRender() {
   if (renderScheduled) return;
@@ -795,25 +850,20 @@ function scheduleRender() {
   });
 }
 
-// 点击画布：移动山峰中心（用比例存储，跟画布实际像素大小无关）
 canvas.addEventListener('click', (e) => {
   const rect = canvas.getBoundingClientRect();
   center.fx = (e.clientX - rect.left) / rect.width;
   center.fy = (e.clientY - rect.top) / rect.height;
   scheduleRender();
 });
-
-// 鼠标移动：显示当前位置海拔
 canvas.addEventListener('mousemove', (e) => {
   const rect = canvas.getBoundingClientRect();
   const fx = (e.clientX - rect.left) / rect.width;
   const fy = (e.clientY - rect.top) / rect.height;
-
   const p = collectParams();
   const logicalH = LOGICAL_W * (canvas.height / canvas.width);
   const centerLogical = { x: center.fx * LOGICAL_W, y: center.fy * logicalH };
   const h = heightAtLogical(fx * LOGICAL_W, fy * logicalH, centerLogical, p.peak, p.spread, p.noiseAmp, p.noiseScale);
-
   tooltip.style.display = 'block';
   tooltip.style.left = (e.clientX - rect.left + 14) + 'px';
   tooltip.style.top = (e.clientY - rect.top + 10) + 'px';
@@ -821,9 +871,9 @@ canvas.addEventListener('mousemove', (e) => {
 });
 canvas.addEventListener('mouseleave', () => { tooltip.style.display = 'none'; });
 
-// 其余滑块 / 颜色 / 复选框：实时重新渲染
 ['peak','spread','noiseAmp','noiseScale','levels','lineWidth','indexInterval','fontSize',
- 'labelColor','followLineColor','labelStroke','bgColor','contourColor','indexColor']
+ 'labelColor','followLineColor','labelStroke','peakShow','peakDotColor','peakLabelColor','peakFontSize',
+ 'bgColor','contourColor','indexColor']
   .forEach((id) => els[id].addEventListener('input', scheduleRender));
 
 els.unifyIndexColor.addEventListener('change', () => {
@@ -831,7 +881,6 @@ els.unifyIndexColor.addEventListener('change', () => {
   scheduleRender();
 });
 
-// 同步各个滑块旁边显示的数字
 function bindValDisplay(id) {
   const input = els[id];
   const out = document.getElementById(id + 'Val');
@@ -840,37 +889,28 @@ function bindValDisplay(id) {
   input.addEventListener('input', update);
   update();
 }
-['peak','spread','noiseAmp','noiseScale','levels','lineWidth','indexInterval','fontSize']
+['peak','spread','noiseAmp','noiseScale','levels','lineWidth','indexInterval','fontSize','peakFontSize']
   .forEach(bindValDisplay);
 
-// ================================================================
-// 导出 PNG（用一个和目标尺寸完全一致的离屏画布重新画一遍）
-// ================================================================
 document.getElementById('exportBtn').addEventListener('click', () => {
   const w = Number(els.outputWidth.value);
   const h = Number(els.outputHeight.value);
-  const big = w * h > 4000 * 4000;
-  if (big) {
+  if (w * h > 4000 * 4000) {
     const ok = confirm(`当前导出尺寸为 ${w}×${h}px，生成大图可能需要几秒到几十秒，期间浏览器会短暂无响应。是否继续？`);
     if (!ok) return;
   }
-
   const btn = document.getElementById('exportBtn');
   btn.disabled = true;
   btn.textContent = '正在生成…';
-
-  // 用 setTimeout 让浏览器先把按钮状态、confirm 关闭动画画出来，再做耗时的绘制
   setTimeout(() => {
     const off = document.createElement('canvas');
     off.width = w; off.height = h;
     const offCtx = off.getContext('2d');
     drawScene(offCtx, w, h, collectParams());
-
     const link = document.createElement('a');
     link.download = '等高线图.png';
     link.href = off.toDataURL('image/png');
     link.click();
-
     btn.disabled = false;
     btn.textContent = '导出为 PNG 图片';
   }, 50);
