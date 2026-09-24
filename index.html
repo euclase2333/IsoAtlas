@@ -231,13 +231,25 @@
           <div class="field"><label>高度 px</label><input id="outputHeight" type="number" min="100" max="10000" value="800" /></div>
         </div>
         <label class="checkline"><input id="lockAspect" type="checkbox" checked />锁定宽高比（默认 1:1）</label>
+
         <div class="field" style="margin-top:12px;">
-          <label>DPI <span class="sub">默认 72，最大 300</span></label>
-          <input id="dpiInput" type="number" min="72" max="300" value="72" />
+          <label>格式</label>
+          <select id="exportFormat">
+            <option value="png">PNG（支持透明背景）</option>
+            <option value="jpg">JPG（不支持透明）</option>
+            <option value="svg">SVG（矢量，放大不糊，支持透明背景）</option>
+          </select>
+        </div>
+        <label class="checkline"><input id="exportBg" type="checkbox" checked />包含背景颜色 <span class="sub">取消勾选=透明背景，只保留线条/数字/中心点标记</span></label>
+        <div id="exportBgWarn" style="display:none;font-size:11.5px;color:#b45309;margin-top:6px;line-height:1.5;">JPG 不支持透明，导出时会自动填充成白色背景。</div>
+
+        <div class="field" style="margin-top:12px;">
+          <label>DPI <span class="sub">默认 300，只影响打印物理尺寸，不改变上面设的像素宽高</span></label>
+          <input id="dpiInput" type="number" min="72" max="300" value="300" />
         </div>
         <div id="physicalSize"></div>
         <div id="previewNote"></div>
-        <button id="exportBtn">导出为 PNG 图片</button>
+        <button id="exportBtn">导出</button>
         <div id="exportWarn">提示：尺寸超过约 4000×4000px 时，导出可能需要几秒到几十秒，浏览器会短暂无响应，这是正常现象，耐心等待即可。</div>
       </div>
     </div>
@@ -272,6 +284,10 @@ const canvas = document.getElementById('canvas');
 const ctx = canvas.getContext('2d');
 const tooltip = document.getElementById('tooltip');
 
+// 专门用来"把文字转成矢量路径"的离屏 canvas，不会显示在页面上，只在内存里用
+const glyphCanvas = document.createElement('canvas');
+const glyphCtx = glyphCanvas.getContext('2d');
+
 const LOGICAL_W = 800;
 const PREVIEW_MAX = 900;
 
@@ -292,7 +308,7 @@ const els = {};
  'fontSize','labelColor','followLineColor','labelStroke',
  'peakShow','peakDotColor','basinDotColor','peakLabelColor','peakLabelBg','peakFontSize',
  'bgColor','contourColor','unifyIndexColor','indexColor','showIndexBadges',
- 'outputWidth','outputHeight','lockAspect','dpiInput'].forEach(id => els[id] = document.getElementById(id));
+ 'outputWidth','outputHeight','lockAspect','dpiInput','exportFormat','exportBg'].forEach(id => els[id] = document.getElementById(id));
 
 const fontFamilySelect = document.getElementById('fontFamily');
 const customFontInput = document.getElementById('customFontInput');
@@ -548,6 +564,194 @@ function buildSubPolyline(path, cum, s0, s1, pointAt) {
   }
   pts.push(pointAt(s1).p);
   return pts;
+}
+
+// ================================================================
+// 文字转矢量路径（SVG 导出专用，不依赖任何第三方库）
+// ------------------------------------------------------
+// 为什么要这么做：SVG 里如果直接写 <text>，浏览器/看图软件只会记录"用什么字体名画这行字"，
+// 打开的人电脑上如果没装同一款字体，文字就会变成默认字体，位置、宽度全部跑掉。
+// 转成"路径"（也就是文字的实际轮廓形状）之后，就不再依赖任何字体，
+// 在任何电脑、任何软件里打开都和导出时长得一模一样。
+//
+// 具体做法（没有引入 opentype.js 这类字体解析库，用的是"截图再描边"的思路）：
+// 1. 把这一小段文字画到一块看不见的离屏 canvas 上（4 倍尺寸，让边缘更平滑，不容易有锯齿）
+// 2. 读取这块画布每个像素的"透明度"（alpha 通道）：文字覆盖的地方是不透明的，其余地方透明
+// 3. 直接复用前面写等高线时用的同一套"等高线追踪算法"(marching squares)，
+//    把"透明度从有到无"的边界描出来，变成一条条闭合的折线——这些折线连起来就是文字的轮廓
+// 4. 用 SVG 的 fill-rule="evenodd"（奇偶填充规则）拼成一个 <path>：
+//    这样像"0"、"8"这种中间镂空的字符，镂空的部分会自动正确显示成"没有颜色"，不用额外处理
+// ================================================================
+function textToPathD(text, fontFamily, fontPx, bold) {
+  if (!text) return null;
+  const SS = 3; // 超采样倍数：先放大 3 倍画字，再把坐标缩回来，边缘会更平滑
+  const fontStr = `${bold ? 'bold ' : ''}${fontPx * SS}px ` + fontStack(fontFamily);
+  glyphCtx.font = fontStr;
+  const metrics = glyphCtx.measureText(text);
+  const width = metrics.width / SS; // 换算回"目标坐标系"下的文字宽度
+  const ascent = (metrics.actualBoundingBoxAscent || fontPx * SS * 0.8) / SS;
+  const descent = (metrics.actualBoundingBoxDescent || fontPx * SS * 0.25) / SS;
+
+  const pad = Math.max(4, fontPx * 0.3); // 目标坐标系下的留白
+  const padSS = pad * SS;
+  const cw = Math.ceil(width * SS) + padSS * 2;
+  const ch = Math.ceil((ascent + descent) * SS) + padSS * 2;
+  if (cw <= 0 || ch <= 0 || cw > 4000 || ch > 4000) return null; // 极端情况下（字号异常大）直接放弃，避免卡死
+
+  glyphCanvas.width = cw;
+  glyphCanvas.height = ch;
+  glyphCtx.clearRect(0, 0, cw, ch);
+  glyphCtx.font = fontStr;
+  glyphCtx.fillStyle = '#000';
+  glyphCtx.textAlign = 'left';
+  glyphCtx.textBaseline = 'alphabetic';
+  const baseX = padSS;
+  const baseY = padSS + ascent * SS;
+  glyphCtx.fillText(text, baseX, baseY);
+
+  // 构造一个"高度网格"给 traceContour 用：文字内部记 1，外部记 0，在 0.5 这个高度描线，
+  // 正好就是"文字边缘"——这跟画等高线时"哪里比某个高度高"是完全一样的思路。
+  const img = glyphCtx.getImageData(0, 0, cw, ch);
+  const grid = [];
+  for (let y = 0; y <= ch; y++) {
+    const row = [];
+    const yy = Math.min(y, ch - 1);
+    for (let x = 0; x <= cw; x++) {
+      const xx = Math.min(x, cw - 1);
+      const alpha = img.data[(yy * cw + xx) * 4 + 3];
+      row.push(alpha > 127 ? 1 : 0);
+    }
+    grid.push(row);
+  }
+  const segments = traceContour(grid, cw, ch, 1, 0.5);
+  if (!segments.length) return null;
+  const paths = chainSegments(segments);
+
+  // 把"超采样像素坐标"换算回目标坐标系，原点定在文字左侧、基线位置（跟 canvas 的
+  // textAlign='left' + textBaseline='alphabetic' 效果一致，方便后面统一摆放）
+  const d = paths
+    .map((path) => {
+      if (path.length < 3) return '';
+      const pts = path.map(([px, py]) => [(px - baseX) / SS, (py - baseY) / SS]);
+      return pts.map((pt, i) => `${i === 0 ? 'M' : 'L'} ${pt[0].toFixed(2)} ${pt[1].toFixed(2)}`).join(' ') + ' Z';
+    })
+    .filter(Boolean)
+    .join(' ');
+  if (!d) return null;
+
+  // baselineOffset：从"基线对齐"换算成"垂直居中对齐"（对应 canvas 的 textBaseline='middle'）
+  // 需要多平移的距离，后面拼 transform 时会用到
+  const baselineOffset = (ascent - descent) / 2;
+  return { d, width, ascent, descent, baselineOffset };
+}
+
+// ================================================================
+// SVG 导出：把整张图重新生成一遍矢量版本
+// ------------------------------------------------------
+// 这里没有直接复用 drawScene（canvas 版本），而是单独写了一份逻辑，
+// 虽然代码看起来重复，但对新手来说更容易理解——"canvas 怎么画的，SVG 就怎么拼字符串"，
+// 一一对应，不用去理解一层额外的抽象。
+// includeBackground=false 时不会输出背景矩形，SVG 本身没画背景的地方就是透明的。
+// ================================================================
+function buildSvgString(p, pxWidth, pxHeight, includeBackground, dpi) {
+  const logicalW = LOGICAL_W;
+  const logicalH = LOGICAL_W * (pxHeight / pxWidth);
+  const scaleFactor = pxWidth / logicalW;
+
+  const gridCount = clampGridCount(Math.max(pxWidth, pxHeight));
+  const peaksLogical = p.peaks.map((pk) => ({ x: pk.fx * logicalW, y: pk.fy * logicalH, height: pk.height }));
+  const { grid, cellSize, rows, cols, maxH, minH } = buildHeightGrid(
+    gridCount, logicalW, logicalH, peaksLogical, p.spread, p.noiseAmp, p.noiseScale
+  );
+  const range = maxH - minH;
+  const padding = Math.max(6, p.fontSize * 0.5);
+
+  const parts = [];
+
+  if (includeBackground) {
+    parts.push(`<rect x="0" y="0" width="${pxWidth}" height="${pxHeight}" fill="${p.bgColor}" />`);
+  }
+
+  if (range > 0.01) {
+    for (let i = 1; i <= p.levels; i++) {
+      const threshold = minH + (range * i) / (p.levels + 1);
+      const isIndex = i % p.indexInterval === 0;
+      let segments = traceContour(grid, cols, rows, cellSize, threshold);
+      segments = filterSegmentsByStartRadius(segments, peaksLogical, p.startRadius);
+      if (!segments.length) continue;
+      const paths = chainSegments(segments);
+
+      const strokeColor = isIndex ? (p.unifyIndexColor ? p.contourColor : p.indexColor) : p.contourColor;
+      const alpha = isIndex ? 1 : 0.42;
+      const lw = (isIndex ? p.lineWidth * 2.4 : p.lineWidth) * scaleFactor;
+      const text = `${Math.round(threshold)}m`;
+      glyphCtx.font = `${isIndex ? 'bold ' : ''}${p.fontSize}px ` + fontStack(p.fontFamily);
+
+      paths.forEach((path) => {
+        const layout = layoutLabelsForPath(glyphCtx, path, text, padding);
+        layout.keepRanges.forEach(([s0, s1]) => {
+          const pts = buildSubPolyline(path, layout.cum, s0, s1, layout.pointAt);
+          if (pts.length < 2) return;
+          const d = pts
+            .map((pt, idx) => `${idx === 0 ? 'M' : 'L'} ${(pt[0] * scaleFactor).toFixed(2)} ${(pt[1] * scaleFactor).toFixed(2)}`)
+            .join(' ');
+          parts.push(
+            `<path d="${d}" fill="none" stroke="${hexToRgba(strokeColor, alpha)}" stroke-width="${lw.toFixed(2)}" stroke-linejoin="round" stroke-linecap="round" />`
+          );
+        });
+        layout.labels.forEach((l) => {
+          const glyph = textToPathD(l.text, p.fontFamily, p.fontSize * scaleFactor, isIndex);
+          if (!glyph) return;
+          const fillColor = p.followLineColor ? strokeColor : p.labelColor;
+          const tx = (l.x * scaleFactor).toFixed(2);
+          const ty = (l.y * scaleFactor).toFixed(2);
+          const deg = ((l.angle * 180) / Math.PI).toFixed(2);
+          const dx = (-glyph.width / 2).toFixed(2);
+          const dy = glyph.baselineOffset.toFixed(2);
+          let strokeAttr = '';
+          if (p.labelStroke) {
+            const sw = (Math.max(2, p.fontSize * 0.2) * scaleFactor).toFixed(2);
+            strokeAttr = ` stroke="${p.bgColor}" stroke-width="${sw}" stroke-linejoin="round"`;
+          }
+          parts.push(
+            `<path d="${glyph.d}" transform="translate(${tx},${ty}) rotate(${deg}) translate(${dx},${dy})" fill="${fillColor}" fill-rule="evenodd"${strokeAttr} />`
+          );
+        });
+      });
+    }
+  }
+
+  if (p.peakShow) {
+    peaksLogical.forEach((pk) => {
+      const isBasin = pk.height < 0;
+      const elev = heightAtLogical(pk.x, pk.y, peaksLogical, p.spread, p.noiseAmp, p.noiseScale);
+      const dotColor = isBasin ? p.basinDotColor : p.peakDotColor;
+      const cx = pk.x * scaleFactor, cy = pk.y * scaleFactor;
+      parts.push(
+        `<circle cx="${cx.toFixed(2)}" cy="${cy.toFixed(2)}" r="${(5 * scaleFactor).toFixed(2)}" fill="${dotColor}" stroke="#ffffff" stroke-width="${(1.5 * scaleFactor).toFixed(2)}" />`
+      );
+      const label = `Elev: ${Math.round(elev)}m`;
+      const glyph = textToPathD(label, p.fontFamily, p.peakFontSize * scaleFactor, true);
+      if (glyph) {
+        const boxX = cx + 10 * scaleFactor - 4 * scaleFactor;
+        const boxY = cy - p.peakFontSize * 0.75 * scaleFactor;
+        const boxW = glyph.width + 8 * scaleFactor;
+        const boxH = p.peakFontSize * 1.5 * scaleFactor;
+        parts.push(`<rect x="${boxX.toFixed(2)}" y="${boxY.toFixed(2)}" width="${boxW.toFixed(2)}" height="${boxH.toFixed(2)}" fill="${p.peakLabelBg}" />`);
+        const tx = (cx + 10 * scaleFactor).toFixed(2);
+        const ty = cy.toFixed(2);
+        parts.push(
+          `<path d="${glyph.d}" transform="translate(${tx},${ty}) translate(0,${glyph.baselineOffset.toFixed(2)})" fill="${p.peakLabelColor}" fill-rule="evenodd" />`
+        );
+      }
+    });
+  }
+
+  // width/height 用物理单位(cm)，让打印/排版软件知道这张图实际应该多大；
+  // viewBox 仍然用像素坐标，内部所有坐标计算不用跟着 DPI 变，两者互不干扰。
+  const cmW = (pxWidth / dpi * 2.54).toFixed(3);
+  const cmH = (pxHeight / dpi * 2.54).toFixed(3);
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="${cmW}cm" height="${cmH}cm" viewBox="0 0 ${pxWidth} ${pxHeight}">${parts.join('')}</svg>`;
 }
 
 // ================================================================
@@ -888,14 +1092,19 @@ function collectParams() {
   };
 }
 
-function drawScene(targetCtx, pxWidth, pxHeight, p) {
+function drawScene(targetCtx, pxWidth, pxHeight, p, includeBackground = true) {
   const logicalW = LOGICAL_W;
   const logicalH = LOGICAL_W * (pxHeight / pxWidth);
   const scaleFactor = pxWidth / logicalW;
 
   targetCtx.setTransform(1, 0, 0, 1, 0, 0);
-  targetCtx.fillStyle = p.bgColor;
-  targetCtx.fillRect(0, 0, pxWidth, pxHeight);
+  if (includeBackground) {
+    targetCtx.fillStyle = p.bgColor;
+    targetCtx.fillRect(0, 0, pxWidth, pxHeight);
+  } else {
+    // 不包含背景：清空成完全透明，而不是画一层背景色
+    targetCtx.clearRect(0, 0, pxWidth, pxHeight);
+  }
 
   targetCtx.save();
   targetCtx.scale(scaleFactor, scaleFactor);
@@ -1074,27 +1283,149 @@ function bindValDisplay(id) {
 ['spread','noiseAmp','noiseScale','levels','lineWidth','indexInterval','startRadius','fontSize','peakFontSize']
   .forEach(bindValDisplay);
 
+// ================================================================
+// 给导出的 PNG / JPG 写入真正的 DPI 信息
+// ------------------------------------------------------
+// 光是在页面上算"多少厘米"给你看是不够的——如果 DPI 数值不写进文件本身，
+// 别人拿这张图去 Photoshop / Illustrator / 打印店的软件里打开，
+// 软件读到的 DPI 还是默认值（通常是 72 或 96），打印尺寸就会算错。
+// 所以这里直接在导出的文件里写入 DPI 元数据，PNG 和 JPG 各有自己的写法。
+// ================================================================
+
+// ---- PNG：插入一个 pHYs（物理尺寸）chunk ----
+// PNG 文件由一串"chunk"首尾相连组成，每个 chunk = 长度(4字节) + 类型(4字节) + 数据 + CRC32校验(4字节)。
+// 文件开头固定是 8 字节签名 + IHDR（图片基本信息，chunk 总长恒定 25 字节），
+// 我们只需要在 IHDR 后面插入一个新的 pHYs chunk，其余字节完全不用动。
+function crc32(bytes) {
+  if (!crc32.table) {
+    const table = [];
+    for (let n = 0; n < 256; n++) {
+      let c = n;
+      for (let k = 0; k < 8; k++) c = c & 1 ? (0xedb88320 ^ (c >>> 1)) : (c >>> 1);
+      table[n] = c >>> 0;
+    }
+    crc32.table = table;
+  }
+  let crc = 0xffffffff;
+  for (let i = 0; i < bytes.length; i++) crc = crc32.table[(crc ^ bytes[i]) & 0xff] ^ (crc >>> 8);
+  return (crc ^ 0xffffffff) >>> 0;
+}
+async function setPngDpi(blob, dpi) {
+  const buf = new Uint8Array(await blob.arrayBuffer());
+  const pixelsPerMeter = Math.round(dpi / 0.0254); // 1 英寸 = 0.0254 米
+  const chunk = new Uint8Array(8 + 9 + 4); // 长度(4) + 类型(4) + 数据(9) + CRC(4)
+  const dv = new DataView(chunk.buffer);
+  dv.setUint32(0, 9); // 数据长度固定是 9 字节
+  chunk.set([0x70, 0x48, 0x59, 0x73], 4); // "pHYs"
+  dv.setUint32(8, pixelsPerMeter);  // 水平：每米多少像素
+  dv.setUint32(12, pixelsPerMeter); // 垂直：每米多少像素
+  chunk[16] = 1; // 单位标志：1 = 米
+  const crc = crc32(chunk.slice(4, 17));
+  dv.setUint32(17, crc);
+
+  const insertAt = 8 + 25; // 8字节签名 + 25字节 IHDR chunk
+  const out = new Uint8Array(buf.length + chunk.length);
+  out.set(buf.subarray(0, insertAt), 0);
+  out.set(chunk, insertAt);
+  out.set(buf.subarray(insertAt), insertAt + chunk.length);
+  return new Blob([out], { type: 'image/png' });
+}
+
+// ---- JPG：改写 JFIF 头部自带的分辨率字段 ----
+// JPEG 文件在最开头的 APP0(JFIF) 段里，本来就有"单位 + X密度 + Y密度"三个字段，
+// 浏览器生成的 JPG 默认写的是 72，我们直接把这几个字节改成实际设置的 DPI 就行，
+// 不需要像 PNG 那样插入新数据，结构更简单。
+async function setJpegDpi(blob, dpi) {
+  const buf = new Uint8Array(await blob.arrayBuffer());
+  // FFD8 = 文件开头(SOI)，紧接着 FFE0 才是 JFIF 段；不是这个结构就放弃，直接返回原图
+  if (buf[0] !== 0xff || buf[1] !== 0xd8 || buf[2] !== 0xff || buf[3] !== 0xe0) return blob;
+  const idOffset = 8; // 跳过 FFE0(2字节) + 段长度(2字节)
+  const id = String.fromCharCode(buf[idOffset], buf[idOffset + 1], buf[idOffset + 2], buf[idOffset + 3], buf[idOffset + 4]);
+  if (id !== 'JFIF\0') return blob;
+  const unitOffset = idOffset + 5 + 2; // 再跳过标识符(5) + 版本号(2)
+  const dv = new DataView(buf.buffer);
+  buf[unitOffset] = 1; // 1 = 单位是"英寸"
+  dv.setUint16(unitOffset + 1, dpi); // X 方向密度
+  dv.setUint16(unitOffset + 3, dpi); // Y 方向密度
+  return new Blob([buf], { type: 'image/jpeg' });
+}
+
+function canvasToBlob(canvas, type, quality) {
+  return new Promise((resolve) => canvas.toBlob(resolve, type, quality));
+}
+function downloadBlob(blob, filename) {
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.download = filename;
+  link.href = url;
+  link.click();
+  setTimeout(() => URL.revokeObjectURL(url), 2000);
+}
+function todayStr() {
+  const d = new Date();
+  const pad = (n) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+}
+
+// ---- 根据"格式 + 是否包含背景"，实时提示 JPG 透明背景的限制 ----
+function updateExportHints() {
+  const isJpg = els.exportFormat.value === 'jpg';
+  document.getElementById('exportBgWarn').style.display = isJpg && !els.exportBg.checked ? 'block' : 'none';
+}
+els.exportFormat.addEventListener('change', updateExportHints);
+els.exportBg.addEventListener('change', updateExportHints);
+updateExportHints();
+
 document.getElementById('exportBtn').addEventListener('click', () => {
   const w = Number(els.outputWidth.value);
   const h = Number(els.outputHeight.value);
+  const format = els.exportFormat.value; // 'png' | 'jpg' | 'svg'
+  const includeBg = els.exportBg.checked;
+  const dpi = Number(els.dpiInput.value);
+
   if (w * h > 4000 * 4000) {
-    const ok = confirm(`当前导出尺寸为 ${w}×${h}px，生成大图可能需要几秒到几十秒，期间浏览器会短暂无响应。是否继续？`);
+    const ok = confirm(`当前导出尺寸为 ${w}×${h}px，生成大图可能需要几秒到几十秒，期间浏览器会短暂无响应（8000px 以上会更明显），这是正常现象。是否继续？`);
     if (!ok) return;
   }
+
   const btn = document.getElementById('exportBtn');
   btn.disabled = true;
-  btn.textContent = '正在生成…';
-  setTimeout(() => {
-    const off = document.createElement('canvas');
-    off.width = w; off.height = h;
-    const offCtx = off.getContext('2d');
-    drawScene(offCtx, w, h, collectParams()); // 注意：导出时不会调用 drawPeakMarkers，图片里不会有蓝紫色圆点标记
-    const link = document.createElement('a');
-    link.download = '等高线图.png';
-    link.href = off.toDataURL('image/png');
-    link.click();
-    btn.disabled = false;
-    btn.textContent = '导出为 PNG 图片';
+  btn.textContent = '正在导出…';
+
+  // 用 setTimeout 让浏览器先把按钮的"正在导出…"文字画出来，
+  // 再执行下面这些比较耗时的计算，不然按钮文字会因为主线程被占满而"卡住不变"
+  setTimeout(async () => {
+    try {
+      const baseParams = collectParams();
+      const dateStr = todayStr();
+      const filename = `contour-${w}x${h}-${dateStr}.${format}`;
+
+      if (format === 'svg') {
+        const svgStr = buildSvgString(baseParams, w, h, includeBg, dpi);
+        downloadBlob(new Blob([svgStr], { type: 'image/svg+xml' }), filename);
+      } else {
+        // JPG 不支持透明：不管"包含背景"开关选的是什么，JPG 都强制画白色背景
+        const forceWhiteBg = format === 'jpg' && !includeBg;
+        const params = forceWhiteBg ? { ...baseParams, bgColor: '#ffffff' } : baseParams;
+        const drawBg = format === 'jpg' ? true : includeBg;
+
+        const off = document.createElement('canvas');
+        off.width = w;
+        off.height = h;
+        const offCtx = off.getContext('2d');
+        drawScene(offCtx, w, h, params, drawBg); // 注意：导出时不会调用 drawPeakMarkers，图片里不会有蓝紫色圆点编号
+
+        let blob = await canvasToBlob(off, format === 'png' ? 'image/png' : 'image/jpeg', format === 'jpg' ? 0.92 : undefined);
+        blob = format === 'png' ? await setPngDpi(blob, dpi) : await setJpegDpi(blob, dpi);
+        downloadBlob(blob, filename);
+      }
+    } catch (err) {
+      console.error(err);
+      alert('导出失败，请按 F12 打开浏览器控制台查看具体报错信息（通常是导出尺寸设得过大导致内存不够）。');
+    } finally {
+      btn.disabled = false;
+      btn.textContent = '导出';
+    }
   }, 50);
 });
 
