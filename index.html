@@ -3,9 +3,8 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>IsoAtlas · 等高线生成器（最小版）</title>
+<title>IsoAtlas · 等高线生成器</title>
 <style>
-  /* ========== 整体布局 ========== */
   * { box-sizing: border-box; }
   body {
     margin: 0;
@@ -19,90 +18,82 @@
     min-height: 100vh;
   }
   .panel {
-    width: 320px;
-    padding: 24px;
+    width: 340px;
+    padding: 20px 22px;
     background: #ffffff;
     border-right: 1px solid #e2e2e6;
+    max-height: 100vh;
+    overflow-y: auto;
   }
-  .panel h1 {
-    font-size: 20px;
-    margin-bottom: 4px;
+  .panel h1 { font-size: 19px; margin: 0 0 4px; }
+  .panel .hint { font-size: 12.5px; color: #777; margin-bottom: 16px; line-height: 1.5; }
+
+  /* ---- 分组区块 ---- */
+  .section { margin-bottom: 8px; border-top: 1px solid #eee; padding-top: 12px; }
+  .section:first-of-type { border-top: none; }
+  .section-title {
+    font-size: 13px; font-weight: 700; color: #2563eb;
+    margin-bottom: 10px; letter-spacing: 1px; text-transform: uppercase;
   }
-  .panel .hint {
-    font-size: 13px;
-    color: #777;
-    margin-bottom: 20px;
-    line-height: 1.5;
+
+  .field { margin-bottom: 14px; }
+  .field label { display: block; font-size: 13px; margin-bottom: 5px; font-weight: 600; }
+  .field .sub { font-weight: 400; color: #999; font-size: 11.5px; }
+  .field .row { display: flex; align-items: center; gap: 8px; }
+  .field input[type="range"] { flex: 1; }
+  .field .val { width: 44px; text-align: right; font-size: 12.5px; color: #555; }
+  .field input[type="number"] {
+    width: 100%; padding: 6px 8px; border: 1px solid #ddd; border-radius: 6px; font-size: 13px;
   }
-  .field {
-    margin-bottom: 18px;
+  .field input[type="color"] {
+    width: 44px; height: 30px; border: 1px solid #ddd; border-radius: 6px; padding: 2px; background: #fff;
   }
-  .field label {
-    display: block;
-    font-size: 14px;
-    margin-bottom: 6px;
-    font-weight: 600;
+  .field select, .field input[type="text"] {
+    width: 100%; padding: 6px 8px; border: 1px solid #ddd; border-radius: 6px; font-size: 13px; background: #fff;
   }
-  .field .sub {
-    font-weight: 400;
-    color: #999;
-    font-size: 12px;
+  .inline2 { display: flex; gap: 10px; }
+  .inline2 > div { flex: 1; }
+  .checkline { display: flex; align-items: center; gap: 6px; font-size: 12.5px; margin-top: 6px; color: #444; }
+  .checkline input { margin: 0; }
+
+  .presets { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 12px; }
+  .presets button {
+    flex: 1 1 45%; padding: 8px 4px; font-size: 12px; border: 1px solid #ddd; border-radius: 6px;
+    background: #fafafa; cursor: pointer;
   }
-  .field .row {
-    display: flex;
-    align-items: center;
-    gap: 10px;
+  .presets button:hover { background: #eef2ff; border-color: #c7d5fb; }
+
+  .colorpair { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; }
+  .colorpair span { font-size: 12.5px; flex: 1; }
+
+  #fontPreviewBox {
+    margin-top: 8px; padding: 10px; border: 1px dashed #ddd; border-radius: 6px;
+    background: #fafafa; font-size: 18px; text-align: center; color: #222;
   }
-  .field input[type="range"] {
-    flex: 1;
+  #fontWarning { display: none; color: #c0392b; font-size: 11.5px; margin-top: 4px; }
+
+  #physicalSize, #previewNote {
+    font-size: 12px; color: #666; background: #f6f7fb; border-radius: 6px; padding: 8px 10px; margin-top: 6px; line-height: 1.5;
   }
-  .field .val {
-    width: 46px;
-    text-align: right;
-    font-size: 13px;
-    color: #555;
-  }
+  #exportWarn { font-size: 11.5px; color: #b45309; margin-top: 6px; line-height: 1.5; }
+
   #exportBtn {
-    width: 100%;
-    padding: 12px;
-    background: #2563eb;
-    color: white;
-    border: none;
-    border-radius: 8px;
-    font-size: 15px;
-    cursor: pointer;
-    margin-top: 10px;
+    width: 100%; padding: 12px; background: #2563eb; color: white; border: none;
+    border-radius: 8px; font-size: 15px; cursor: pointer; margin-top: 10px;
   }
-  #exportBtn:hover {
-    background: #1d4ed8;
-  }
+  #exportBtn:hover { background: #1d4ed8; }
+  #exportBtn:disabled { background: #93a9d8; cursor: wait; }
+
   .preview {
-    flex: 1;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding: 24px;
-    position: relative;
+    flex: 1; display: flex; align-items: center; justify-content: center; padding: 24px; position: relative;
   }
   canvas {
-    background: #050505;
-    border: 1px solid #222;
-    box-shadow: 0 2px 16px rgba(0,0,0,0.25);
-    max-width: 100%;
-    height: auto;
-    cursor: crosshair;
+    background: #050505; border: 1px solid #222; box-shadow: 0 2px 16px rgba(0,0,0,0.25);
+    max-width: 100%; height: auto; cursor: crosshair;
   }
-  /* 鼠标悬浮时显示海拔的小提示框 */
   #tooltip {
-    position: absolute;
-    pointer-events: none;
-    background: rgba(0,0,0,0.75);
-    color: #fff;
-    font-size: 12px;
-    padding: 4px 8px;
-    border-radius: 4px;
-    display: none;
-    white-space: nowrap;
+    position: absolute; pointer-events: none; background: rgba(0,0,0,0.75); color: #fff;
+    font-size: 12px; padding: 4px 8px; border-radius: 4px; display: none; white-space: nowrap;
   }
 </style>
 </head>
@@ -110,80 +101,112 @@
 
 <div class="app">
 
-  <!-- ========== 左侧：参数面板 ========== -->
+  <!-- ========== 左侧：参数面板（按功能分组） ========== -->
   <div class="panel">
     <h1>IsoAtlas</h1>
     <p class="hint">
-      最小可运行版本 v2：一座山，但用了「噪声扭曲地形 + 等高线追踪算法」，
-      所以等高线不再是完美的圆，而是像真实地形图一样自然弯曲。
-      拖动滑块实时看效果，点击画布可以移动山峰。
+      第二步：加入了颜色自定义、数字缺口标注、字体选择、自定义导出分辨率。
+      拖动滑块实时看效果，点击画布可移动山峰。
     </p>
 
-    <div class="field">
-      <label>山峰高度 <span class="sub">peak</span></label>
-      <div class="row">
-        <input id="peak" type="range" min="50" max="500" value="200" />
-        <span class="val" id="peakVal">200</span>
+    <!-- ---------------- 地形 ---------------- -->
+    <div class="section">
+      <div class="section-title">地形</div>
+      <div class="field">
+        <label>山峰高度 <span class="sub">peak</span></label>
+        <div class="row"><input id="peak" type="range" min="50" max="500" value="200" /><span class="val" id="peakVal">200</span></div>
+      </div>
+      <div class="field">
+        <label>山的宽度 <span class="sub">spread</span></label>
+        <div class="row"><input id="spread" type="range" min="60" max="400" value="180" /><span class="val" id="spreadVal">180</span></div>
+      </div>
+      <div class="field">
+        <label>地形自然扭曲 <span class="sub">noise amount</span></label>
+        <div class="row"><input id="noiseAmp" type="range" min="0" max="80" value="28" /><span class="val" id="noiseAmpVal">28</span></div>
+      </div>
+      <div class="field">
+        <label>噪声细节 <span class="sub">noise detail</span></label>
+        <div class="row"><input id="noiseScale" type="range" min="5" max="50" value="12" /><span class="val" id="noiseScaleVal">12</span></div>
       </div>
     </div>
 
-    <div class="field">
-      <label>山的宽度 <span class="sub">spread</span></label>
-      <div class="row">
-        <input id="spread" type="range" min="60" max="400" value="180" />
-        <span class="val" id="spreadVal">180</span>
+    <!-- ---------------- 等高线 ---------------- -->
+    <div class="section">
+      <div class="section-title">等高线</div>
+      <div class="field">
+        <label>层数 <span class="sub">levels</span></label>
+        <div class="row"><input id="levels" type="range" min="4" max="40" value="20" /><span class="val" id="levelsVal">20</span></div>
+      </div>
+      <div class="field">
+        <label>线条粗细 <span class="sub">line width</span></label>
+        <div class="row"><input id="lineWidth" type="range" min="0.5" max="3" step="0.1" value="1" /><span class="val" id="lineWidthVal">1</span></div>
+      </div>
+      <div class="field">
+        <label>计曲线间隔 <span class="sub">每隔几条加粗一条</span></label>
+        <div class="row"><input id="indexInterval" type="range" min="2" max="10" value="5" /><span class="val" id="indexIntervalVal">5</span></div>
       </div>
     </div>
 
-    <div class="field">
-      <label>等高线层数 <span class="sub">levels</span></label>
-      <div class="row">
-        <input id="levels" type="range" min="4" max="40" value="20" />
-        <span class="val" id="levelsVal">20</span>
+    <!-- ---------------- 标注 ---------------- -->
+    <div class="section">
+      <div class="section-title">标注（高度数字）</div>
+      <div class="field">
+        <label>字号 <span class="sub">6 ~ 200px</span></label>
+        <div class="row"><input id="fontSize" type="range" min="6" max="200" value="12" /><span class="val" id="fontSizeVal">12</span></div>
       </div>
+      <div class="field">
+        <label>字体</label>
+        <select id="fontFamily"></select>
+        <div class="row" style="margin-top:8px;">
+          <input id="customFontInput" type="text" placeholder="或手动输入字体名，如 Source Han Sans" />
+          <button id="applyCustomFont" style="padding:6px 10px;border:1px solid #ddd;border-radius:6px;background:#fafafa;cursor:pointer;">应用</button>
+        </div>
+        <div id="fontPreviewBox">Aa 高度 900m</div>
+        <div id="fontWarning">该字体在本机不可用，已自动使用备用字体显示（不影响其他人电脑）。</div>
+      </div>
+      <div class="colorpair">
+        <input id="labelColor" type="color" value="#ffffff" />
+        <span>数字颜色</span>
+        <label class="checkline"><input id="followLineColor" type="checkbox" checked />跟随线条颜色</label>
+      </div>
+      <label class="checkline"><input id="labelStroke" type="checkbox" checked />数字描边（复杂背景更清晰）</label>
     </div>
 
-    <div class="field">
-      <label>线条粗细 <span class="sub">line width</span></label>
-      <div class="row">
-        <input id="lineWidth" type="range" min="0.5" max="3" step="0.1" value="1" />
-        <span class="val" id="lineWidthVal">1</span>
+    <!-- ---------------- 颜色 ---------------- -->
+    <div class="section">
+      <div class="section-title">颜色</div>
+      <div class="presets">
+        <button data-preset="dark">深色底白线</button>
+        <button data-preset="light">白底黑线</button>
+        <button data-preset="kraft">牛皮纸</button>
+        <button data-preset="ocean">蓝色海洋</button>
       </div>
+      <div class="colorpair"><input id="bgColor" type="color" value="#0a0a0a" /><span>背景颜色</span></div>
+      <div class="colorpair"><input id="contourColor" type="color" value="#ffffff" /><span>普通等高线颜色</span></div>
+      <label class="checkline" style="margin-bottom:8px;"><input id="unifyIndexColor" type="checkbox" checked />计曲线使用相同颜色</label>
+      <div class="colorpair" id="indexColorRow"><input id="indexColor" type="color" value="#ffffff" /><span>计曲线颜色</span></div>
     </div>
 
-    <div class="field">
-      <label>计曲线间隔 <span class="sub">每隔几条加粗一条</span></label>
-      <div class="row">
-        <input id="indexInterval" type="range" min="2" max="10" value="5" />
-        <span class="val" id="indexIntervalVal">5</span>
+    <!-- ---------------- 导出 ---------------- -->
+    <div class="section">
+      <div class="section-title">导出</div>
+      <div class="inline2">
+        <div class="field"><label>宽度 px</label><input id="outputWidth" type="number" min="100" max="10000" value="800" /></div>
+        <div class="field"><label>高度 px</label><input id="outputHeight" type="number" min="100" max="10000" value="800" /></div>
       </div>
-    </div>
-
-    <div class="field">
-      <label>地形自然扭曲 <span class="sub">noise amount</span></label>
-      <div class="row">
-        <input id="noiseAmp" type="range" min="0" max="80" value="28" />
-        <span class="val" id="noiseAmpVal">28</span>
+      <label class="checkline"><input id="lockAspect" type="checkbox" checked />锁定宽高比（默认 1:1）</label>
+      <div class="field" style="margin-top:12px;">
+        <label>DPI <span class="sub">默认 72，最大 300</span></label>
+        <input id="dpiInput" type="number" min="72" max="300" value="72" />
       </div>
+      <div id="physicalSize"></div>
+      <div id="previewNote"></div>
+      <button id="exportBtn">导出为 PNG 图片</button>
+      <div id="exportWarn">提示：尺寸超过约 4000×4000px 时，导出可能需要几秒到几十秒，浏览器会短暂无响应，这是正常现象，耐心等待即可。</div>
     </div>
-
-    <div class="field">
-      <label>噪声细节 <span class="sub">noise detail</span></label>
-      <div class="row">
-        <input id="noiseScale" type="range" min="5" max="50" value="12" />
-        <span class="val" id="noiseScaleVal">12</span>
-      </div>
-    </div>
-
-    <p class="hint">
-      点击画布可以把山峰移动到你点的位置；鼠标悬浮时会显示当前海拔。
-      红点标记的是当前地形的最高点（山顶）。
-    </p>
-
-    <button id="exportBtn">导出为 PNG 图片</button>
   </div>
 
-  <!-- ========== 右侧：画布，用来实时画图 ========== -->
+  <!-- ========== 右侧：实时预览画布 ========== -->
   <div class="preview">
     <canvas id="canvas" width="800" height="800"></canvas>
     <div id="tooltip"></div>
@@ -194,42 +217,28 @@
 <script>
 /*
   ========================================================
-  这一版相比上一版做了什么？
+  这一版（第二步）新增的核心技术点说明：
   ------------------------------------------------------
-  上一版：只有一个山峰，用的是"标准高斯函数"，
-  数学上完全对称，所以每一圈等高线正好是一个"正圆"，
-  我们直接用 ctx.arc() 画圆就行了。
+  1.【预览分辨率 与 导出分辨率 分离】
+     以前画布是固定 800x800。现在你可以把导出尺寸设成很大（最大
+     10000x10000），但如果预览也用这么大的画布来实时重画，
+     拖动滑块会卡到几乎不能用。
+     所以做法是：地形计算永远在一个"逻辑坐标空间"里进行
+     （固定宽度 LOGICAL_W = 800 个逻辑单位，高度按输出的宽高比换算），
+     实际画到屏幕上时，用 ctx.scale() 把这套逻辑坐标"缩放"到
+     当前画布的真实像素大小。
+     预览时画布像素被限制在 900px 以内（快、跟手），
+     点"导出"时才会真正用一个像素级别等于你设置尺寸的画布重新画一遍
+     （慢一点，但只在导出那一下发生）。
 
-  但真实地形从来不是正圆的，看起来会很假。
-  所以这一版加入了两个关键技术：
-
-  1.【噪声扭曲】Domain Warping（域扭曲）
-     在计算"这个点距离山顶多远"之前，先用一个噪声函数
-     把这个点的坐标"轻微挪动"一下（挪动幅度由 noiseAmp 控制，
-     挪动的疏密由 noiseScale 控制）。
-     这样算出来的地形不再是完美对称的，
-     等高线自然就会变成弯弯曲曲、疙疙瘩瘩的自然形状，
-     跟专业地形图的感觉很像。
-
-     这里用的噪声叫"值噪声"（Value Noise），
-     效果和 Perlin / Simplex 噪声类似，但实现起来简单很多，
-     很适合新手阅读和理解。以后想换成更专业的 Simplex 噪声，
-     只需要替换 noise2D() 这一个函数即可，其他代码不用改。
-
-  2.【等高线追踪算法】Marching Squares（移动正方形法）
-     因为地形不再对称，就不能再用画圆的方式了。
-     做法是：
-       a. 把整张画布切成一个很密的网格（比如 140 x 140 格）
-       b. 算出网格每个交叉点的"海拔"
-       c. 对于每一层要画的海拔阈值，检查每个小格子的 4 个角
-          "海拔是否超过阈值"，一共有 16 种组合方式
-       d. 根据组合方式，在格子的边上用线性插值找到
-          "海拔正好等于阈值"的位置，连成一小段线
-       e. 把所有小格子算出来的线段拼在一起，就是一条完整的等高线
-
-     这是等高线图、地形图软件里最常用的经典算法，
-     以后要支持"多个山峰融合"，靠的也是这同一套算法
-     （只需要把 heightAt() 改成"多个山峰高度求和"即可）。
+  2.【等高线路径拼接 Path Chaining】
+     上一版画等高线时，marching squares 算出来的是一堆互不相干的
+     短线段，没法在中间"留白"。这一版把这些线段按端点是否重合
+     拼接成一条条完整的折线（一个山头的一圈等高线通常会拼成一个
+     闭合的环）。有了完整的折线后，才能算出：
+       - 这条线有多长（太短就不标数字）
+       - 沿着线走到多远的位置（用来放数字、找平缓的地方）
+       - 在数字两侧留出缺口，只画缺口以外的部分
   ========================================================
 */
 
@@ -237,150 +246,117 @@ const canvas = document.getElementById('canvas');
 const ctx = canvas.getContext('2d');
 const tooltip = document.getElementById('tooltip');
 
-// 山峰中心点，默认在画布正中间，可以点击移动
-let center = { x: canvas.width / 2, y: canvas.height / 2 };
+const LOGICAL_W = 800;          // 固定的逻辑坐标宽度（不随导出尺寸变化）
+const PREVIEW_MAX = 900;        // 预览画布内部像素上限，保证拖动滑块流畅
 
-// ---------- 拿到所有滑块 ----------
-const peakInput = document.getElementById('peak');
-const spreadInput = document.getElementById('spread');
-const levelsInput = document.getElementById('levels');
-const lineWidthInput = document.getElementById('lineWidth');
-const indexIntervalInput = document.getElementById('indexInterval');
-const noiseAmpInput = document.getElementById('noiseAmp');
-const noiseScaleInput = document.getElementById('noiseScale');
+// 山峰中心点：用"占画布宽/高的比例"存储，这样切换导出尺寸/比例时位置不会跑偏
+let center = { fx: 0.5, fy: 0.5 };
+let currentFontFamily = 'monospace';
 
-const allInputs = [
-  peakInput, spreadInput, levelsInput, lineWidthInput,
-  indexIntervalInput, noiseAmpInput, noiseScaleInput
-];
+// ---------- 拿到控件 ----------
+const els = {};
+['peak','spread','noiseAmp','noiseScale','levels','lineWidth','indexInterval',
+ 'fontSize','labelColor','followLineColor','labelStroke',
+ 'bgColor','contourColor','unifyIndexColor','indexColor',
+ 'outputWidth','outputHeight','lockAspect','dpiInput'].forEach(id => els[id] = document.getElementById(id));
+
+const fontFamilySelect = document.getElementById('fontFamily');
+const customFontInput = document.getElementById('customFontInput');
+const fontPreviewBox = document.getElementById('fontPreviewBox');
+const fontWarning = document.getElementById('fontWarning');
+const indexColorRow = document.getElementById('indexColorRow');
+const physicalSizeEl = document.getElementById('physicalSize');
+const previewNoteEl = document.getElementById('previewNote');
 
 // ================================================================
-// 第一部分：噪声函数（值噪声，效果类似 Perlin Noise）
+// 噪声函数（同第一步，值噪声，效果类似 Perlin）
 // ================================================================
-
-// 一个确定性的"伪随机数"函数：同样的 x,y 永远返回同样的数字
-// （这一点很重要，不然每次重画地形都会闪烁跳动）
 function hash(x, y) {
   const s = Math.sin(x * 127.1 + y * 311.7) * 43758.5453123;
-  return s - Math.floor(s); // 结果落在 0~1 之间
+  return s - Math.floor(s);
 }
-
-// 平滑插值曲线（让噪声看起来自然，而不是生硬的格子状）
-function fade(t) {
-  return t * t * t * (t * (t * 6 - 15) + 10);
-}
-
-// 2D 值噪声：输入任意坐标，输出一个 0~1 之间、连续变化的数字
+function fade(t) { return t * t * t * (t * (t * 6 - 15) + 10); }
 function noise2D(x, y) {
   const xi = Math.floor(x), yi = Math.floor(y);
   const xf = x - xi, yf = y - yi;
   const u = fade(xf), v = fade(yf);
-
-  const n00 = hash(xi, yi);
-  const n10 = hash(xi + 1, yi);
-  const n01 = hash(xi, yi + 1);
-  const n11 = hash(xi + 1, yi + 1);
-
+  const n00 = hash(xi, yi), n10 = hash(xi + 1, yi);
+  const n01 = hash(xi, yi + 1), n11 = hash(xi + 1, yi + 1);
   const nx0 = n00 + u * (n10 - n00);
   const nx1 = n01 + u * (n11 - n01);
   return nx0 + v * (nx1 - nx0);
 }
 
-// ================================================================
-// 第二部分：地形高度函数
-// ================================================================
-
-// 计算某个坐标点的海拔高度
-// 核心思路：先用噪声把坐标"扭一下"，再套用高斯函数算高度
-function heightAt(x, y, peak, spread, noiseAmp, noiseScale) {
-  // 两个方向分别用不同的噪声采样点（+50 偏移是为了让 x/y 方向的扭曲不同步）
+// 某一点的地形高度（逻辑坐标系里计算）
+function heightAtLogical(x, y, centerLogical, peak, spread, noiseAmp, noiseScale) {
   const warpX = (noise2D(x * noiseScale, y * noiseScale) - 0.5) * noiseAmp;
   const warpY = (noise2D(x * noiseScale + 50, y * noiseScale + 50) - 0.5) * noiseAmp;
-
-  const dx = (x + warpX) - center.x;
-  const dy = (y + warpY) - center.y;
+  const dx = (x + warpX) - centerLogical.x;
+  const dy = (y + warpY) - centerLogical.y;
   const dist = Math.sqrt(dx * dx + dy * dy);
-
   return peak * Math.exp(-(dist * dist) / (2 * spread * spread));
 }
 
 // ================================================================
-// 第三部分：等高线追踪（Marching Squares）
+// 网格 + Marching Squares（同第一步原理，网格密度可变）
 // ================================================================
+function clampGridCount(maxPx) {
+  return Math.max(140, Math.min(480, Math.round(maxPx / 25)));
+}
 
-const GRID = 140; // 网格密度：越大越精细，但计算量也越大
-
-// 在给定参数下，算出整张网格每个交叉点的海拔，存成二维数组
-function buildHeightGrid(peak, spread, noiseAmp, noiseScale) {
-  const cellSize = canvas.width / GRID;
+function buildHeightGrid(gridCount, logicalW, logicalH, centerLogical, peak, spread, noiseAmp, noiseScale) {
+  const cellSize = logicalW / gridCount;
+  const rows = Math.round(logicalH / cellSize);
   const grid = [];
-  let maxH = -Infinity, maxPt = { x: center.x, y: center.y };
-
-  for (let j = 0; j <= GRID; j++) {
+  let maxH = -Infinity, maxPt = [centerLogical.x, centerLogical.y];
+  for (let j = 0; j <= rows; j++) {
     const row = [];
-    for (let i = 0; i <= GRID; i++) {
-      const x = i * cellSize;
-      const y = j * cellSize;
-      const h = heightAt(x, y, peak, spread, noiseAmp, noiseScale);
+    for (let i = 0; i <= gridCount; i++) {
+      const x = i * cellSize, y = j * cellSize;
+      const h = heightAtLogical(x, y, centerLogical, peak, spread, noiseAmp, noiseScale);
       row.push(h);
-      if (h > maxH) { maxH = h; maxPt = { x, y }; }
+      if (h > maxH) { maxH = h; maxPt = [x, y]; }
     }
     grid.push(row);
   }
-  return { grid, cellSize, maxH, maxPt };
+  return { grid, cellSize, rows, cols: gridCount, maxPt };
 }
 
-// 线性插值：在数值 va、vb 之间找到"正好等于 threshold"的位置比例
 function lerpPoint(p0, p1, v0, v1, threshold) {
   if (v1 === v0) return p0;
   const t = (threshold - v0) / (v1 - v0);
   return [p0[0] + (p1[0] - p0[0]) * t, p0[1] + (p1[1] - p0[1]) * t];
 }
 
-// 对某一个阈值海拔，扫描整张网格，返回所有线段 [[x1,y1],[x2,y2]]
-function traceContour(grid, cellSize, threshold) {
+function traceContour(grid, cols, rows, cellSize, threshold) {
   const segments = [];
-
-  for (let j = 0; j < GRID; j++) {
-    for (let i = 0; i < GRID; i++) {
-      // 格子的 4 个角：a=左上 b=右上 c=右下 d=左下
-      const a = grid[j][i];
-      const b = grid[j][i + 1];
-      const c = grid[j + 1][i + 1];
-      const d = grid[j + 1][i];
-
-      // 判断每个角是否"高于阈值"，拼成一个 4 位二进制数
+  for (let j = 0; j < rows; j++) {
+    for (let i = 0; i < cols; i++) {
+      const a = grid[j][i], b = grid[j][i + 1], c = grid[j + 1][i + 1], d = grid[j + 1][i];
       let caseIdx = 0;
       if (a > threshold) caseIdx |= 8;
       if (b > threshold) caseIdx |= 4;
       if (c > threshold) caseIdx |= 2;
       if (d > threshold) caseIdx |= 1;
-
-      // 0 = 整个格子都在阈值以下，15 = 整个格子都在阈值以上
-      // 这两种情况格子内部没有等高线穿过，直接跳过
       if (caseIdx === 0 || caseIdx === 15) continue;
 
       const x0 = i * cellSize, x1 = (i + 1) * cellSize;
       const y0 = j * cellSize, y1 = (j + 1) * cellSize;
-
-      // 格子 4 条边上，海拔正好等于阈值的点（用线性插值找到）
-      const top    = lerpPoint([x0, y0], [x1, y0], a, b, threshold);
-      const right  = lerpPoint([x1, y0], [x1, y1], b, c, threshold);
+      const top = lerpPoint([x0, y0], [x1, y0], a, b, threshold);
+      const right = lerpPoint([x1, y0], [x1, y1], b, c, threshold);
       const bottom = lerpPoint([x0, y1], [x1, y1], d, c, threshold);
-      const left   = lerpPoint([x0, y0], [x0, y1], a, d, threshold);
+      const left = lerpPoint([x0, y0], [x0, y1], a, d, threshold);
 
-      // 16 种组合对应的连线方式（经典 Marching Squares 查找表）
-      // 5 和 10 是"鞍点"情况，格子里同时有两条不相连的线段
       switch (caseIdx) {
-        case 1:  segments.push([left, bottom]); break;
-        case 2:  segments.push([bottom, right]); break;
-        case 3:  segments.push([left, right]); break;
-        case 4:  segments.push([top, right]); break;
-        case 5:  segments.push([top, left], [bottom, right]); break;
-        case 6:  segments.push([top, bottom]); break;
-        case 7:  segments.push([top, left]); break;
-        case 8:  segments.push([top, left]); break;
-        case 9:  segments.push([top, bottom]); break;
+        case 1: segments.push([left, bottom]); break;
+        case 2: segments.push([bottom, right]); break;
+        case 3: segments.push([left, right]); break;
+        case 4: segments.push([top, right]); break;
+        case 5: segments.push([top, left], [bottom, right]); break;
+        case 6: segments.push([top, bottom]); break;
+        case 7: segments.push([top, left]); break;
+        case 8: segments.push([top, left]); break;
+        case 9: segments.push([top, bottom]); break;
         case 10: segments.push([top, right], [bottom, left]); break;
         case 11: segments.push([top, right]); break;
         case 12: segments.push([left, right]); break;
@@ -393,173 +369,521 @@ function traceContour(grid, cellSize, threshold) {
 }
 
 // ================================================================
-// 第四部分：渲染
+// 新增：把零散线段拼接成完整折线（供留白标注使用）
 // ================================================================
+function chainSegments(segments) {
+  const key = (p) => Math.round(p[0] * 100) + ',' + Math.round(p[1] * 100);
+  const map = new Map();
+  segments.forEach((seg, idx) => {
+    [0, 1].forEach((end) => {
+      const k = key(seg[end]);
+      if (!map.has(k)) map.set(k, []);
+      map.get(k).push({ idx, end });
+    });
+  });
 
-function render() {
-  const peak = Number(peakInput.value);
-  const spread = Number(spreadInput.value);
-  const levels = Number(levelsInput.value);
-  const lineWidth = Number(lineWidthInput.value);
-  const indexInterval = Number(indexIntervalInput.value);
-  const noiseAmp = Number(noiseAmpInput.value);
-  const noiseScale = Number(noiseScaleInput.value) / 1000; // 滑块给的是整数，换算成小数
+  const visited = new Array(segments.length).fill(false);
+  const paths = [];
 
-  peakVal.textContent = peak;
-  spreadVal.textContent = spread;
-  levelsVal.textContent = levels;
-  lineWidthVal.textContent = lineWidth;
-  indexIntervalVal.textContent = indexInterval;
-  noiseAmpVal.textContent = noiseAmp;
-  noiseScaleVal.textContent = Number(noiseScaleInput.value);
+  for (let i = 0; i < segments.length; i++) {
+    if (visited[i]) continue;
+    visited[i] = true;
+    const path = [segments[i][0], segments[i][1]];
 
-  // 深色背景
-  ctx.fillStyle = '#050505';
-  ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-  // 算出整张网格的海拔（同时顺便找到山顶精确位置，供后面画红点用）
-  const { grid, cellSize, maxPt } = buildHeightGrid(peak, spread, noiseAmp, noiseScale);
-
-  ctx.lineJoin = 'round';
-  ctx.lineCap = 'round';
-
-  // 从低到高，逐层画等高线
-  for (let i = 1; i <= levels; i++) {
-    const threshold = (peak * i) / (levels + 1);
-    if (threshold <= 0 || threshold >= peak) continue;
-
-    const segments = traceContour(grid, cellSize, threshold);
-    if (segments.length === 0) continue;
-
-    const isIndex = i % indexInterval === 0; // 计曲线：每隔几条加粗一条
-
-    // ---- 画线 ----
-    ctx.beginPath();
-    for (const [p0, p1] of segments) {
-      ctx.moveTo(p0[0], p0[1]);
-      ctx.lineTo(p1[0], p1[1]);
+    let extended = true;
+    while (extended) {
+      extended = false;
+      const k = key(path[path.length - 1]);
+      const cands = map.get(k) || [];
+      for (const c of cands) {
+        if (visited[c.idx]) continue;
+        const seg = segments[c.idx];
+        path.push(seg[c.end === 0 ? 1 : 0]);
+        visited[c.idx] = true;
+        extended = true;
+        break;
+      }
     }
-    if (isIndex) {
-      ctx.strokeStyle = 'rgba(255,255,255,0.95)';
-      ctx.lineWidth = lineWidth * 2.4;
-    } else {
-      ctx.strokeStyle = 'rgba(255,255,255,0.32)';
-      ctx.lineWidth = lineWidth;
+    extended = true;
+    while (extended) {
+      extended = false;
+      const k = key(path[0]);
+      const cands = map.get(k) || [];
+      for (const c of cands) {
+        if (visited[c.idx]) continue;
+        const seg = segments[c.idx];
+        path.unshift(seg[c.end === 0 ? 1 : 0]);
+        visited[c.idx] = true;
+        extended = true;
+        break;
+      }
     }
-    ctx.stroke();
+    paths.push(path);
+  }
+  return paths;
+}
 
-    // ---- 标注 1~2 个海拔数字 ----
-    // 从这一层的线段里，挑两段离得比较远的，把文字放在线段中点，
-    // 并让文字方向跟这段线本身的方向一致（贴着线走）
-    const pickIdx = [0, Math.floor(segments.length * 0.55)];
-    const used = new Set();
+function dist(a, b) { return Math.hypot(a[0] - b[0], a[1] - b[1]); }
 
-    pickIdx.forEach((idx) => {
-      if (used.has(idx) || idx >= segments.length) return;
-      used.add(idx);
-      const [p0, p1] = segments[idx];
-      const mx = (p0[0] + p1[0]) / 2;
-      const my = (p0[1] + p1[1]) / 2;
-      let angle = Math.atan2(p1[1] - p0[1], p1[0] - p0[0]);
-      // 避免文字上下颠倒：角度超过 90 度就翻转 180 度
-      if (angle > Math.PI / 2 || angle < -Math.PI / 2) angle += Math.PI;
+// 沿一条折线，找到 1~2 个"比较平缓"的位置放数字，并算出要留白的区间
+function layoutLabelsForPath(ctx, path, text, padding) {
+  const n = path.length;
+  const cum = [0];
+  for (let i = 1; i < n; i++) cum.push(cum[i - 1] + dist(path[i - 1], path[i]));
+  const totalLen = cum[n - 1] || 0;
 
-      ctx.save();
-      ctx.translate(mx, my);
-      ctx.rotate(angle);
-      ctx.font = isIndex ? 'bold 12px monospace' : '10px monospace';
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'middle';
-      // 先描一层深色边，让文字在线条上也看得清楚
-      ctx.strokeStyle = 'rgba(5,5,5,0.9)';
-      ctx.lineWidth = 3;
-      ctx.strokeText(`${Math.round(threshold)}m`, 0, 0);
-      ctx.fillStyle = isIndex ? '#ffffff' : 'rgba(255,255,255,0.85)';
-      ctx.fillText(`${Math.round(threshold)}m`, 0, 0);
-      ctx.restore();
+  function pointAt(s) {
+    s = Math.max(0, Math.min(totalLen, s));
+    let k = 1;
+    while (k < n - 1 && cum[k] < s) k++;
+    const s0 = cum[k - 1], s1 = cum[k];
+    const t = s1 > s0 ? (s - s0) / (s1 - s0) : 0;
+    const p0 = path[k - 1], p1 = path[k];
+    return {
+      p: [p0[0] + (p1[0] - p0[0]) * t, p0[1] + (p1[1] - p0[1]) * t],
+      angle: Math.atan2(p1[1] - p0[1], p1[0] - p0[0])
+    };
+  }
+
+  if (n < 3 || totalLen < padding * 3) {
+    // 太短，放不下数字：整条线不留白、不标注
+    return { keepRanges: [[0, totalLen]], labels: [], cum, pointAt };
+  }
+
+  const textW = ctx.measureText(text).width;
+  const gapHalf = textW / 2 + padding;
+
+  if (totalLen < gapHalf * 2 + padding) {
+    return { keepRanges: [[0, totalLen]], labels: [], cum, pointAt };
+  }
+
+  function curviness(s) {
+    const a = pointAt(Math.max(0, s - gapHalf * 0.8));
+    const b = pointAt(Math.min(totalLen, s + gapHalf * 0.8));
+    let d = Math.abs(a.angle - b.angle);
+    if (d > Math.PI) d = 2 * Math.PI - d;
+    return d;
+  }
+
+  const targets = totalLen > gapHalf * 6 ? [0.28, 0.72] : [0.5];
+  const searchRadius = Math.max(gapHalf, Math.min(totalLen * 0.18, gapHalf * 4));
+  const gaps = [];
+  const labels = [];
+
+  targets.forEach((frac) => {
+    const centerS = frac * totalLen;
+    let bestS = null, bestScore = Infinity;
+    const step = Math.max(2, searchRadius / 6);
+    for (let off = -searchRadius; off <= searchRadius; off += step) {
+      const s = centerS + off;
+      if (s - gapHalf < 0 || s + gapHalf > totalLen) continue;
+      const score = curviness(s);
+      if (score < bestScore) { bestScore = score; bestS = s; }
+    }
+    if (bestS === null) return;
+    const overlaps = gaps.some(([g0, g1]) => !(bestS + gapHalf < g0 || bestS - gapHalf > g1));
+    if (overlaps) return;
+    const hit = pointAt(bestS);
+    let angle = hit.angle;
+    if (angle > Math.PI / 2 || angle < -Math.PI / 2) angle += Math.PI;
+    labels.push({ x: hit.p[0], y: hit.p[1], angle, text });
+    gaps.push([bestS - gapHalf, bestS + gapHalf]);
+  });
+
+  gaps.sort((a, b) => a[0] - b[0]);
+  const keepRanges = [];
+  let cursor = 0;
+  gaps.forEach(([g0, g1]) => {
+    if (g0 > cursor) keepRanges.push([cursor, g0]);
+    cursor = Math.max(cursor, g1);
+  });
+  if (cursor < totalLen) keepRanges.push([cursor, totalLen]);
+
+  return { keepRanges, labels, cum, pointAt };
+}
+
+function buildSubPolyline(path, cum, s0, s1, pointAt) {
+  const pts = [pointAt(s0).p];
+  for (let i = 0; i < path.length; i++) {
+    if (cum[i] > s0 && cum[i] < s1) pts.push(path[i]);
+  }
+  pts.push(pointAt(s1).p);
+  return pts;
+}
+
+// ================================================================
+// 颜色工具 & 预设
+// ================================================================
+function hexToRgba(hex, alpha) {
+  const h = hex.replace('#', '');
+  const r = parseInt(h.substring(0, 2), 16);
+  const g = parseInt(h.substring(2, 4), 16);
+  const b = parseInt(h.substring(4, 6), 16);
+  return `rgba(${r},${g},${b},${alpha})`;
+}
+
+const PRESETS = {
+  dark:  { bg: '#0a0a0a', contour: '#ffffff', index: '#ffffff', label: '#ffffff' },
+  light: { bg: '#ffffff', contour: '#1a1a1a', index: '#000000', label: '#000000' },
+  kraft: { bg: '#d8c39c', contour: '#5b4324', index: '#3a2a14', label: '#3a2a14' },
+  ocean: { bg: '#062a4a', contour: '#7fd4ff', index: '#ffffff', label: '#eaffff' },
+};
+
+document.querySelectorAll('.presets button').forEach((btn) => {
+  btn.addEventListener('click', () => {
+    const p = PRESETS[btn.dataset.preset];
+    els.bgColor.value = p.bg;
+    els.contourColor.value = p.contour;
+    els.indexColor.value = p.index;
+    els.labelColor.value = p.label;
+    scheduleRender();
+  });
+});
+
+// ================================================================
+// 字体检测（经典技巧：用几个保底字体做基准宽度对比）
+// ================================================================
+const FONT_CANDIDATES = [
+  'Arial','Helvetica','Helvetica Neue','Times New Roman','Georgia','Courier New','Verdana',
+  'Tahoma','Trebuchet MS','Impact','Segoe UI','Roboto','Calibri','Cambria','Consolas','Menlo','Monaco',
+  'PingFang SC','PingFang TC','Microsoft YaHei','Microsoft JhengHei','SimHei','SimSun','STHeiti',
+  'STSong','STKaiti','Noto Sans CJK SC','Noto Serif CJK SC','Source Han Sans CN','Source Han Serif CN',
+  'Hiragino Sans GB','Kaiti SC','FangSong','YouYuan'
+];
+
+function makeFontDetector() {
+  const testString = 'mmmmmmmmmmlli珠峰';
+  const testSize = '72px';
+  const c = document.createElement('canvas').getContext('2d');
+  const baseFonts = ['monospace', 'sans-serif', 'serif'];
+  const baseWidths = {};
+  baseFonts.forEach((bf) => { c.font = testSize + ' ' + bf; baseWidths[bf] = c.measureText(testString).width; });
+  return function isAvailable(font) {
+    for (const bf of baseFonts) {
+      c.font = testSize + " '" + font + "', " + bf;
+      if (c.measureText(testString).width !== baseWidths[bf]) return true;
+    }
+    return false;
+  };
+}
+const isFontAvailable = makeFontDetector();
+
+function populateFontDropdown() {
+  const generic = ['monospace', 'sans-serif', 'serif'];
+  const detected = FONT_CANDIDATES.filter(isFontAvailable);
+  const all = generic.concat(detected);
+  fontFamilySelect.innerHTML = '';
+  all.forEach((f) => {
+    const opt = document.createElement('option');
+    opt.value = f; opt.textContent = f;
+    fontFamilySelect.appendChild(opt);
+  });
+  fontFamilySelect.value = 'monospace';
+  currentFontFamily = 'monospace';
+  updateFontPreview();
+}
+
+function updateFontPreview() {
+  fontPreviewBox.style.fontFamily = `"${currentFontFamily}", monospace`;
+}
+
+fontFamilySelect.addEventListener('change', () => {
+  currentFontFamily = fontFamilySelect.value;
+  fontWarning.style.display = 'none';
+  updateFontPreview();
+  scheduleRender();
+});
+
+document.getElementById('applyCustomFont').addEventListener('click', () => {
+  const name = customFontInput.value.trim();
+  if (!name) return;
+  const available = isFontAvailable(name);
+  // 不管本机是否检测到，都先把它加入下拉框、切换过去
+  let opt = Array.from(fontFamilySelect.options).find((o) => o.value === name);
+  if (!opt) {
+    opt = document.createElement('option');
+    opt.value = name; opt.textContent = name + (available ? '' : '（未检测到）');
+    fontFamilySelect.appendChild(opt);
+  }
+  fontFamilySelect.value = name;
+  currentFontFamily = name;
+  fontWarning.style.display = available ? 'none' : 'block';
+  updateFontPreview();
+  scheduleRender();
+});
+
+// ================================================================
+// 导出尺寸 / DPI / 锁定宽高比
+// ================================================================
+let aspectRatio = 1; // 宽 / 高
+
+function updatePhysicalSize() {
+  const w = Number(els.outputWidth.value);
+  const h = Number(els.outputHeight.value);
+  const dpi = Number(els.dpiInput.value);
+  const inW = (w / dpi).toFixed(2), inH = (h / dpi).toFixed(2);
+  const cmW = (w / dpi * 2.54).toFixed(1), cmH = (h / dpi * 2.54).toFixed(1);
+  physicalSizeEl.textContent = `导出尺寸 ${w}×${h}px ≈ 打印 ${cmW}×${cmH} cm（${inW}×${inH} in）@ ${dpi} DPI`;
+
+  if (w > PREVIEW_MAX || h > PREVIEW_MAX) {
+    previewNoteEl.textContent = `预览已自动缩小显示（内部渲染约 ${getPreviewSize(w, h).w}×${getPreviewSize(w, h).h}px），导出时仍按 ${w}×${h}px 原始分辨率生成，不影响清晰度。`;
+  } else {
+    previewNoteEl.textContent = '';
+  }
+}
+
+els.outputWidth.addEventListener('input', () => {
+  if (els.lockAspect.checked) els.outputHeight.value = Math.round(Number(els.outputWidth.value) / aspectRatio);
+  updatePhysicalSize();
+  resizePreviewCanvas();
+  scheduleRender();
+});
+els.outputHeight.addEventListener('input', () => {
+  if (els.lockAspect.checked) els.outputWidth.value = Math.round(Number(els.outputHeight.value) * aspectRatio);
+  updatePhysicalSize();
+  resizePreviewCanvas();
+  scheduleRender();
+});
+els.lockAspect.addEventListener('change', () => {
+  if (els.lockAspect.checked) {
+    aspectRatio = Number(els.outputWidth.value) / Number(els.outputHeight.value);
+  }
+});
+els.dpiInput.addEventListener('input', updatePhysicalSize);
+
+function getPreviewSize(w, h) {
+  if (w <= PREVIEW_MAX && h <= PREVIEW_MAX) return { w, h };
+  const scale = Math.min(PREVIEW_MAX / w, PREVIEW_MAX / h);
+  return { w: Math.max(1, Math.round(w * scale)), h: Math.max(1, Math.round(h * scale)) };
+}
+
+function resizePreviewCanvas() {
+  const w = Number(els.outputWidth.value), h = Number(els.outputHeight.value);
+  const size = getPreviewSize(w, h);
+  canvas.width = size.w;
+  canvas.height = size.h;
+}
+
+// ================================================================
+// 主渲染函数：ctx / 像素宽 / 像素高 都是参数，
+// 这样"预览画布"和"导出用的离屏画布"可以共用同一套绘制逻辑
+// ================================================================
+function collectParams() {
+  return {
+    peak: Number(els.peak.value),
+    spread: Number(els.spread.value),
+    noiseAmp: Number(els.noiseAmp.value),
+    noiseScale: Number(els.noiseScale.value) / 1000,
+    levels: Number(els.levels.value),
+    lineWidth: Number(els.lineWidth.value),
+    indexInterval: Number(els.indexInterval.value),
+    fontSize: Number(els.fontSize.value),
+    fontFamily: currentFontFamily,
+    labelColor: els.labelColor.value,
+    followLineColor: els.followLineColor.checked,
+    labelStroke: els.labelStroke.checked,
+    bgColor: els.bgColor.value,
+    contourColor: els.contourColor.value,
+    unifyIndexColor: els.unifyIndexColor.checked,
+    indexColor: els.indexColor.value,
+  };
+}
+
+function drawScene(targetCtx, pxWidth, pxHeight, p) {
+  const logicalW = LOGICAL_W;
+  const logicalH = LOGICAL_W * (pxHeight / pxWidth);
+  const scaleFactor = pxWidth / logicalW;
+
+  targetCtx.setTransform(1, 0, 0, 1, 0, 0);
+  targetCtx.fillStyle = p.bgColor;
+  targetCtx.fillRect(0, 0, pxWidth, pxHeight);
+
+  targetCtx.save();
+  targetCtx.scale(scaleFactor, scaleFactor);
+  targetCtx.lineJoin = 'round';
+  targetCtx.lineCap = 'round';
+
+  const gridCount = clampGridCount(Math.max(pxWidth, pxHeight));
+  const centerLogical = { x: center.fx * logicalW, y: center.fy * logicalH };
+  const { grid, cellSize, rows, cols, maxPt } = buildHeightGrid(
+    gridCount, logicalW, logicalH, centerLogical, p.peak, p.spread, p.noiseAmp, p.noiseScale
+  );
+
+  const labelQueue = [];
+  const padding = Math.max(6, p.fontSize * 0.5);
+
+  for (let i = 1; i <= p.levels; i++) {
+    const threshold = (p.peak * i) / (p.levels + 1);
+    if (threshold <= 0 || threshold >= p.peak) continue;
+
+    const isIndex = i % p.indexInterval === 0;
+    const segments = traceContour(grid, cols, rows, cellSize, threshold);
+    if (!segments.length) continue;
+    const paths = chainSegments(segments);
+
+    const strokeColor = isIndex ? (p.unifyIndexColor ? p.contourColor : p.indexColor) : p.contourColor;
+    const alpha = isIndex ? 1 : 0.42;
+    targetCtx.lineWidth = isIndex ? p.lineWidth * 2.4 : p.lineWidth;
+    targetCtx.strokeStyle = hexToRgba(strokeColor, alpha);
+    targetCtx.font = `${isIndex ? 'bold ' : ''}${p.fontSize}px "${p.fontFamily}", monospace`;
+
+    const text = `${Math.round(threshold)}m`;
+
+    paths.forEach((path) => {
+      const layout = layoutLabelsForPath(targetCtx, path, text, padding);
+      layout.keepRanges.forEach(([s0, s1]) => {
+        const pts = buildSubPolyline(path, layout.cum, s0, s1, layout.pointAt);
+        if (pts.length < 2) return;
+        targetCtx.beginPath();
+        pts.forEach((pt, idx) => (idx === 0 ? targetCtx.moveTo(pt[0], pt[1]) : targetCtx.lineTo(pt[0], pt[1])));
+        targetCtx.stroke();
+      });
+      layout.labels.forEach((l) => labelQueue.push({ ...l, isIndex, strokeColor }));
     });
   }
 
-  // ---- 山顶标记：红点 + 海拔文字 ----
-  ctx.beginPath();
-  ctx.arc(maxPt.x, maxPt.y, 5, 0, Math.PI * 2);
-  ctx.fillStyle = '#ef4444';
-  ctx.fill();
-  ctx.strokeStyle = '#ffffff';
-  ctx.lineWidth = 1.5;
-  ctx.stroke();
+  // ---- 标注文字统一最后画，压在所有线的上面 ----
+  labelQueue.forEach((l) => {
+    targetCtx.save();
+    targetCtx.translate(l.x, l.y);
+    targetCtx.rotate(l.angle);
+    targetCtx.font = `${l.isIndex ? 'bold ' : ''}${p.fontSize}px "${p.fontFamily}", monospace`;
+    targetCtx.textAlign = 'center';
+    targetCtx.textBaseline = 'middle';
+    const fillColor = p.followLineColor ? l.strokeColor : p.labelColor;
+    if (p.labelStroke) {
+      targetCtx.strokeStyle = p.bgColor;
+      targetCtx.lineWidth = Math.max(2, p.fontSize * 0.2);
+      targetCtx.strokeText(l.text, 0, 0);
+    }
+    targetCtx.fillStyle = fillColor;
+    targetCtx.fillText(l.text, 0, 0);
+    targetCtx.restore();
+  });
 
-  ctx.font = 'bold 13px monospace';
-  ctx.textAlign = 'left';
-  ctx.textBaseline = 'middle';
-  const label = `Elev: ${Math.round(peak)}m`;
-  const tx = maxPt.x + 10, ty = maxPt.y;
-  const tw = ctx.measureText(label).width;
-  ctx.fillStyle = 'rgba(0,0,0,0.7)';
-  ctx.fillRect(tx - 4, ty - 10, tw + 8, 20);
-  ctx.fillStyle = '#ffffff';
-  ctx.fillText(label, tx, ty);
+  // ---- 山顶标记：红点 + Elev 文字 ----
+  targetCtx.beginPath();
+  targetCtx.arc(maxPt[0], maxPt[1], 5, 0, Math.PI * 2);
+  targetCtx.fillStyle = '#ef4444';
+  targetCtx.fill();
+  targetCtx.strokeStyle = '#ffffff';
+  targetCtx.lineWidth = 1.5;
+  targetCtx.stroke();
+
+  targetCtx.font = 'bold 13px monospace';
+  targetCtx.textAlign = 'left';
+  targetCtx.textBaseline = 'middle';
+  const label = `Elev: ${Math.round(p.peak)}m`;
+  const tx = maxPt[0] + 10, ty = maxPt[1];
+  const tw = targetCtx.measureText(label).width;
+  targetCtx.fillStyle = 'rgba(0,0,0,0.7)';
+  targetCtx.fillRect(tx - 4, ty - 10, tw + 8, 20);
+  targetCtx.fillStyle = '#ffffff';
+  targetCtx.fillText(label, tx, ty);
+
+  targetCtx.restore();
 }
 
-// ---------- 用 requestAnimationFrame 做一个简单的"防抖"，
-//            避免拖动滑块时因为渲染太频繁而卡顿 ----------
+// ---------- 预览渲染（带 requestAnimationFrame 防抖） ----------
 let renderScheduled = false;
 function scheduleRender() {
   if (renderScheduled) return;
   renderScheduled = true;
   requestAnimationFrame(() => {
     renderScheduled = false;
-    render();
+    drawScene(ctx, canvas.width, canvas.height, collectParams());
   });
 }
 
-// 点击画布：移动山峰中心
+// 点击画布：移动山峰中心（用比例存储，跟画布实际像素大小无关）
 canvas.addEventListener('click', (e) => {
   const rect = canvas.getBoundingClientRect();
-  const scaleX = canvas.width / rect.width;
-  const scaleY = canvas.height / rect.height;
-  center.x = (e.clientX - rect.left) * scaleX;
-  center.y = (e.clientY - rect.top) * scaleY;
+  center.fx = (e.clientX - rect.left) / rect.width;
+  center.fy = (e.clientY - rect.top) / rect.height;
   scheduleRender();
 });
 
-// 鼠标移动：显示当前位置的海拔（悬浮提示框）
+// 鼠标移动：显示当前位置海拔
 canvas.addEventListener('mousemove', (e) => {
   const rect = canvas.getBoundingClientRect();
-  const scaleX = canvas.width / rect.width;
-  const scaleY = canvas.height / rect.height;
-  const x = (e.clientX - rect.left) * scaleX;
-  const y = (e.clientY - rect.top) * scaleY;
+  const fx = (e.clientX - rect.left) / rect.width;
+  const fy = (e.clientY - rect.top) / rect.height;
 
-  const peak = Number(peakInput.value);
-  const spread = Number(spreadInput.value);
-  const noiseAmp = Number(noiseAmpInput.value);
-  const noiseScale = Number(noiseScaleInput.value) / 1000;
-  const h = heightAt(x, y, peak, spread, noiseAmp, noiseScale);
+  const p = collectParams();
+  const logicalH = LOGICAL_W * (canvas.height / canvas.width);
+  const centerLogical = { x: center.fx * LOGICAL_W, y: center.fy * logicalH };
+  const h = heightAtLogical(fx * LOGICAL_W, fy * logicalH, centerLogical, p.peak, p.spread, p.noiseAmp, p.noiseScale);
 
   tooltip.style.display = 'block';
   tooltip.style.left = (e.clientX - rect.left + 14) + 'px';
   tooltip.style.top = (e.clientY - rect.top + 10) + 'px';
   tooltip.textContent = `海拔 Elev: ${Math.round(h)}m`;
 });
+canvas.addEventListener('mouseleave', () => { tooltip.style.display = 'none'; });
 
-canvas.addEventListener('mouseleave', () => {
-  tooltip.style.display = 'none';
+// 其余滑块 / 颜色 / 复选框：实时重新渲染
+['peak','spread','noiseAmp','noiseScale','levels','lineWidth','indexInterval','fontSize',
+ 'labelColor','followLineColor','labelStroke','bgColor','contourColor','indexColor']
+  .forEach((id) => els[id].addEventListener('input', scheduleRender));
+
+els.unifyIndexColor.addEventListener('change', () => {
+  indexColorRow.style.display = els.unifyIndexColor.checked ? 'none' : 'flex';
+  scheduleRender();
 });
 
-// 所有滑块拖动时，实时重新渲染
-allInputs.forEach((el) => el.addEventListener('input', scheduleRender));
+// 同步各个滑块旁边显示的数字
+function bindValDisplay(id) {
+  const input = els[id];
+  const out = document.getElementById(id + 'Val');
+  if (!input || !out) return;
+  const update = () => (out.textContent = input.value);
+  input.addEventListener('input', update);
+  update();
+}
+['peak','spread','noiseAmp','noiseScale','levels','lineWidth','indexInterval','fontSize']
+  .forEach(bindValDisplay);
 
-// 导出 PNG
+// ================================================================
+// 导出 PNG（用一个和目标尺寸完全一致的离屏画布重新画一遍）
+// ================================================================
 document.getElementById('exportBtn').addEventListener('click', () => {
-  const link = document.createElement('a');
-  link.download = '等高线图.png';
-  link.href = canvas.toDataURL('image/png');
-  link.click();
+  const w = Number(els.outputWidth.value);
+  const h = Number(els.outputHeight.value);
+  const big = w * h > 4000 * 4000;
+  if (big) {
+    const ok = confirm(`当前导出尺寸为 ${w}×${h}px，生成大图可能需要几秒到几十秒，期间浏览器会短暂无响应。是否继续？`);
+    if (!ok) return;
+  }
+
+  const btn = document.getElementById('exportBtn');
+  btn.disabled = true;
+  btn.textContent = '正在生成…';
+
+  // 用 setTimeout 让浏览器先把按钮状态、confirm 关闭动画画出来，再做耗时的绘制
+  setTimeout(() => {
+    const off = document.createElement('canvas');
+    off.width = w; off.height = h;
+    const offCtx = off.getContext('2d');
+    drawScene(offCtx, w, h, collectParams());
+
+    const link = document.createElement('a');
+    link.download = '等高线图.png';
+    link.href = off.toDataURL('image/png');
+    link.click();
+
+    btn.disabled = false;
+    btn.textContent = '导出为 PNG 图片';
+  }, 50);
 });
 
-// 初始渲染
-render();
+// ================================================================
+// 初始化
+// ================================================================
+indexColorRow.style.display = els.unifyIndexColor.checked ? 'none' : 'flex';
+populateFontDropdown();
+updatePhysicalSize();
+resizePreviewCanvas();
+scheduleRender();
 </script>
 
 </body>
